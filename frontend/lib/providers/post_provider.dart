@@ -104,7 +104,9 @@ class PostProvider extends ChangeNotifier {
 
       final index = _posts.indexWhere((p) => p.postId == postId);
       if (index != -1) {
-        _posts[index] = updatedPost;
+        _posts[index] = _posts[index].copyWith(
+          comments: updatedPost.comments,
+        );
         notifyListeners();
       }
     } catch (e) {

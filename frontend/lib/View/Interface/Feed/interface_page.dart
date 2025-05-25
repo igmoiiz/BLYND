@@ -171,9 +171,10 @@ class _InterfacePageState extends State<InterfacePage> {
     );
   }
 
-  Future<void> _handleLike(String postId) async {
+  Future<bool> _handleLike(String postId) async {
     try {
       await context.read<PostProvider>().likePost(postId);
+      return true;
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -183,6 +184,7 @@ class _InterfacePageState extends State<InterfacePage> {
           ),
         );
       }
+      return false;
     }
   }
 
@@ -211,6 +213,7 @@ class _InterfacePageState extends State<InterfacePage> {
                   backgroundColor: Colors.red,
                 ),
               );
+              rethrow; // Re-throw to handle in CommentSheet
             }
           }
         },
