@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:frontend/providers/user_provider.dart';
+import 'package:frontend/providers/post_provider.dart';
 import 'package:frontend/Utils/Navigation/routes.dart';
 import 'package:frontend/Utils/Theme/theme.dart';
 import 'package:frontend/Utils/consts.dart';
@@ -10,24 +13,35 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Supabase.initialize(url: supabase_url, anonKey: supabase_anonKey);
-  runApp(const MainApp());
+
+  await Supabase.initialize(
+    url: supabase_url,
+    anonKey: supabase_anonKey,
+  );
+
+  runApp(const MyApp());
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: navigatorKey,
-      debugShowCheckedModeBanner: false,
-      // debugShowMaterialGrid: true,
-      theme: lightMode,
-      darkTheme: darkMode,
-      title: "BLYND",
-      onGenerateRoute: Routes.generateRoute,
-      home: const SplashScreen(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => PostProvider()),
+      ],
+      child: MaterialApp(
+        navigatorKey: navigatorKey,
+        debugShowCheckedModeBanner: false,
+        theme: lightMode,
+        darkTheme: darkMode,
+        themeMode: ThemeMode.dark, // Since your app uses dark mode
+        title: "BLYND",
+        onGenerateRoute: Routes.generateRoute,
+        home: const SplashScreen(),
+      ),
     );
   }
 }

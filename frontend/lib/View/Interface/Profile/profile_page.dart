@@ -81,13 +81,18 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  void _navigateToSettings() {
-    Navigator.push(
+  void _navigateToSettings() async {
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => const SettingsPage(),
       ),
     );
+
+    // If settings were updated, refresh the profile
+    if (result == true) {
+      _loadUserProfile();
+    }
   }
 
   @override
@@ -156,12 +161,33 @@ class _ProfilePageState extends State<ProfilePage> {
                     // Profile Image
                     CircleAvatar(
                       radius: 50,
-                      backgroundImage: _user!.profileImage != null
-                          ? NetworkImage(_user!.profileImage!)
-                          : null,
-                      child: _user!.profileImage == null
-                          ? const Icon(Icons.person, size: 50)
-                          : null,
+                      backgroundColor: theme.colorScheme.surface,
+                      child: ClipOval(
+                        child: _user!.profileImage != null &&
+                                _user!.profileImage!.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: _user!.profileImage!,
+                                width: 100,
+                                height: 100,
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) => Container(
+                                  color: theme.colorScheme.surface,
+                                  child: const Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                ),
+                                errorWidget: (context, url, error) => Icon(
+                                  Icons.person,
+                                  size: 50,
+                                  color: theme.colorScheme.primary,
+                                ),
+                              )
+                            : Icon(
+                                Icons.person,
+                                size: 50,
+                                color: theme.colorScheme.primary,
+                              ),
+                      ),
                     ),
                     const SizedBox(height: 16),
 

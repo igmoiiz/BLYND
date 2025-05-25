@@ -11,18 +11,14 @@ const upload = multer();
 // Create post
 router.post('/',
   protect,
-  upload.single('postImage'),
   [
-    body('caption').trim().notEmpty().withMessage('Caption is required')
+    body('caption').trim().notEmpty().withMessage('Caption is required'),
+    body('postImage').optional().isString(),
   ],
   async (req, res) => {
     try {
-      const { caption } = req.body;
-      let postImageUrl = '';
-
-      if (req.file) {
-        postImageUrl = await uploadPostImage(req.file, req.user._id);
-      }
+      const { caption, postImage } = req.body;
+      let postImageUrl = postImage || '';
 
       const post = await Post.create({
         userId: req.user._id,
@@ -41,7 +37,8 @@ router.post('/',
       console.error('Create post error:', error);
       res.status(500).json({
         success: false,
-        message: 'Error creating post'
+        message: 'Error creating post',
+        error: error.message
       });
     }
   }

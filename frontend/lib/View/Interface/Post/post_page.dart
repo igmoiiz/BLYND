@@ -4,9 +4,10 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:frontend/services/api_service.dart';
 import 'package:frontend/Utils/Components/custom_button.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:frontend/providers/post_provider.dart';
 
 class CreatePostPage extends StatefulWidget {
   const CreatePostPage({super.key});
@@ -18,7 +19,7 @@ class CreatePostPage extends StatefulWidget {
 class _CreatePostPageState extends State<CreatePostPage> {
   final _formKey = GlobalKey<FormState>();
   final _captionController = TextEditingController();
-  bool _isLoading = false;
+  final bool _isLoading = false;
   Uint8List? _imageBytes;
 
   @override
@@ -90,34 +91,54 @@ class _CreatePostPageState extends State<CreatePostPage> {
     if (!_formKey.currentState!.validate() || _imageBytes == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Please select an image and add a caption')),
+          content: Text('Please select an image and add a caption'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
 
-    setState(() => _isLoading = true);
-
     try {
-      await ApiService.createPost(
-        caption: _captionController.text.trim(),
-        imageBytes: _imageBytes!,
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => WillPopScope(
+          onWillPop: () async => false,
+          child: const Center(
+            child: CircularProgressIndicator(),
+          ),
+        ),
       );
 
+      // Create post using provider
+      await context.read<PostProvider>().createPost(
+            caption: _captionController.text.trim(),
+            imageBytes: _imageBytes!,
+          );
+
+      // Close loading dialog
+      if (mounted) Navigator.pop(context);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Post created successfully!')),
+          const SnackBar(
+            content: Text('Post created successfully!'),
+            backgroundColor: Colors.green,
+          ),
         );
-        Navigator.pop(context);
       }
     } catch (e) {
+      // Close loading dialog
+      if (mounted) Navigator.pop(context);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error creating post: $e')),
+          SnackBar(
+            content: Text('Error creating post: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
       }
     }
   }
@@ -129,6 +150,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: Text(
           'Create Post',
           style: GoogleFonts.poppins(
@@ -138,13 +160,6 @@ class _CreatePostPageState extends State<CreatePostPage> {
         ),
         elevation: 0,
         backgroundColor: theme.scaffoldBackgroundColor,
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios_new,
-            color: theme.colorScheme.onBackground,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
       ),
       body: Form(
         key: _formKey,

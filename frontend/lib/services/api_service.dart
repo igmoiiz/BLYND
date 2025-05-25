@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:developer';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:frontend/Model/post_model.dart';
 import 'package:frontend/Model/user_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 
 class ApiService {
   static const String baseUrl =
@@ -114,6 +116,9 @@ class ApiService {
       final supabase = Supabase.instance.client;
       final fileName = 'post_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
+      log('Uploading image to Supabase...');
+
+      // Upload image to Supabase
       final uploadResponse =
           await supabase.storage.from('post-images').uploadBinary(
                 fileName,
@@ -124,29 +129,52 @@ class ApiService {
                 ),
               );
 
-      if (uploadResponse.isEmpty) {
-        throw Exception('Failed to upload image');
-      }
+      log('Upload response path: $uploadResponse');
 
+      // Get the public URL for the uploaded image
       final imageUrl =
           supabase.storage.from('post-images').getPublicUrl(fileName);
 
+      log('Generated image URL: $imageUrl');
+
+      // Create the request body with the complete image URL
+      final requestBody = jsonEncode({
+        'caption': caption,
+        'postImage': imageUrl,
+      });
+
+      log('Sending request with body: $requestBody');
+
+      // Create post with the image URL
       final response = await http.post(
         Uri.parse('$baseUrl/posts'),
-        headers: _headers,
-        body: jsonEncode({
-          'caption': caption,
-          'postImage': imageUrl,
-        }),
+        headers: {
+          'Content-Type': 'application/json',
+          if (_token != null) 'Authorization': 'Bearer $_token',
+        },
+        body: requestBody,
       );
 
+      log('Create post response: ${response.body}');
+
       if (response.statusCode != 201) {
+        log('Failed to create post with status code: ${response.statusCode}');
         throw Exception('Failed to create post: ${response.body}');
       }
 
       final data = jsonDecode(response.body);
-      return PostModel.fromJson(data['post']);
+      final post = PostModel.fromJson(data['post']);
+
+      log('Created post with image URL: ${post.postImage}');
+
+      // Verify if the post was created with the correct image URL
+      if (post.postImage?.isEmpty ?? true) {
+        log('Warning: Post was created but image URL is empty in the response');
+      }
+
+      return post;
     } catch (e) {
+      log('Create post error: $e');
       throw Exception('Create post error: $e');
     }
   }
@@ -301,7 +329,7 @@ class ApiService {
     }
   }
 
-  static Future<void> updateProfile({
+  static Future<UserModel> updateProfile({
     String? name,
     String? bio,
     Uint8List? profileImage,
@@ -310,9 +338,12 @@ class ApiService {
       String? profileImageUrl;
 
       if (profileImage != null) {
+        log('Uploading profile image to Supabase...');
+
         final supabase = Supabase.instance.client;
         final fileName = 'user_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
+        // Upload image to Supabase
         final uploadResponse =
             await supabase.storage.from('user-images').uploadBinary(
                   fileName,
@@ -323,26 +354,40 @@ class ApiService {
                   ),
                 );
 
-        if (uploadResponse.isNotEmpty) {
-          profileImageUrl =
-              supabase.storage.from('user-images').getPublicUrl(fileName);
-        }
+        log('Upload response path: $uploadResponse');
+
+        // Get the public URL for the uploaded image
+        profileImageUrl =
+            supabase.storage.from('user-images').getPublicUrl(fileName);
+
+        log('Generated profile image URL: $profileImageUrl');
       }
 
-      final response = await http.patch(
-        Uri.parse('$baseUrl/users/me'),
+      // Create request body
+      final requestBody = jsonEncode({
+        if (name != null) 'name': name,
+        if (bio != null) 'bio': bio,
+        if (profileImageUrl != null) 'profileImage': profileImageUrl,
+      });
+
+      log('Sending update profile request with body: $requestBody');
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/users/profile'),
         headers: _headers,
-        body: jsonEncode({
-          if (name != null) 'name': name,
-          if (bio != null) 'bio': bio,
-          if (profileImageUrl != null) 'profileImage': profileImageUrl,
-        }),
+        body: requestBody,
       );
+
+      log('Update profile response: ${response.body}');
 
       if (response.statusCode != 200) {
         throw Exception('Failed to update profile: ${response.body}');
       }
+
+      final data = jsonDecode(response.body);
+      return UserModel.fromJson(data['user']);
     } catch (e) {
+      log('Update profile error: $e');
       throw Exception('Update profile error: $e');
     }
   }

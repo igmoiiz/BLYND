@@ -1,12 +1,12 @@
 // ignore_for_file: use_build_context_synchronously, deprecated_member_use
 
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:frontend/services/api_service.dart';
-import 'package:frontend/Model/user_model.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
+import 'package:frontend/providers/user_provider.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -18,123 +18,13 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final _nameController = TextEditingController();
   final _bioController = TextEditingController();
+  Uint8List? _selectedImage;
   bool _isLoading = false;
-  bool _isUpdatingProfile = false;
-  bool _isSigningOut = false;
-  UserModel? _user;
 
   @override
   void initState() {
     super.initState();
-    _loadUserProfile();
-  }
-
-  Future<void> _loadUserProfile() async {
-    try {
-      final user = await ApiService.getCurrentUser();
-      setState(() {
-        _user = user;
-        _nameController.text = user.name;
-        _bioController.text = user.bio ?? '';
-      });
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading profile: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _updateProfile() async {
-    if (_nameController.text.trim().isEmpty) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      await ApiService.updateProfile(
-        name: _nameController.text.trim(),
-        bio: _bioController.text.trim(),
-      );
-      await _loadUserProfile();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated successfully')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating profile: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  Future<void> _updateProfileImage() async {
-    try {
-      setState(() => _isUpdatingProfile = true);
-
-      final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1080,
-        maxHeight: 1080,
-        imageQuality: 85,
-      );
-
-      if (pickedFile != null) {
-        final imageBytes = await pickedFile.readAsBytes();
-        await ApiService.updateProfile(profileImage: imageBytes);
-        await _loadUserProfile();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile image updated successfully')),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating profile image: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isUpdatingProfile = false);
-      }
-    }
-  }
-
-  Future<void> _handleSignOut() async {
-    if (_isLoading || _isUpdatingProfile || _isSigningOut) return;
-
-    setState(() => _isSigningOut = true);
-
-    try {
-      ApiService.setToken('');
-      Navigator.of(context).pushReplacementNamed('/login');
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error signing out: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isSigningOut = false);
-      }
-    }
+    _loadUserData();
   }
 
   @override
@@ -144,294 +34,270 @@ class _SettingsPageState extends State<SettingsPage> {
     super.dispose();
   }
 
+  Future<void> _loadUserData() async {
+    final userProvider = context.read<UserProvider>();
+    if (userProvider.user == null) {
+      await userProvider.loadCurrentUser();
+    }
+
+    if (mounted && userProvider.user != null) {
+      _nameController.text = userProvider.user!.name;
+      _bioController.text = userProvider.user!.bio ?? '';
+    }
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 1080,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        final imageBytes = await pickedFile.readAsBytes();
+        setState(() {
+          _selectedImage = imageBytes;
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error picking image: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _saveChanges() async {
+    if (!mounted) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final userProvider = context.read<UserProvider>();
+
+      await userProvider.updateProfile(
+        name: _nameController.text.trim(),
+        bio: _bioController.text.trim(),
+        profileImage: _selectedImage,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile updated successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(
+            context, true); // Return true to indicate successful update
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating profile: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final user = context.watch<UserProvider>().user;
 
-    if (_user == null) {
+    if (user == null) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
       );
     }
 
-    return Stack(
-      children: [
-        Scaffold(
-          appBar: AppBar(
-            elevation: 0,
-            backgroundColor: theme.scaffoldBackgroundColor,
-            leading: IconButton(
-              icon: Icon(
-                Icons.arrow_back_ios_new,
-                color: theme.colorScheme.onBackground,
-              ),
-              onPressed: () => Navigator.pop(context),
-            ),
-            title: Text(
-              "Settings",
-              style: GoogleFonts.poppins(
-                color: theme.colorScheme.onBackground,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          body: RefreshIndicator(
-            onRefresh: _loadUserProfile,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Profile Image Section
-                    Center(
-                      child: Stack(
-                        children: [
-                          Hero(
-                            tag: 'profile_image_own',
-                            child: Container(
-                              width: 120,
-                              height: 120,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: theme.colorScheme.primary,
-                                  width: 2,
-                                ),
-                              ),
-                              child: ClipOval(
-                                child: CachedNetworkImage(
-                                  imageUrl: _user!.profileImage ??
-                                      'https://via.placeholder.com/150',
-                                  fit: BoxFit.cover,
-                                  placeholder: (context, url) => Container(
-                                    color: theme.colorScheme.surface,
-                                    child: Center(
-                                      child: CircularProgressIndicator(
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                          theme.colorScheme.primary,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  errorWidget: (context, url, error) =>
-                                      Container(
-                                    color: theme.colorScheme.surface,
-                                    child: Icon(
-                                      Iconsax.user,
-                                      color: theme.colorScheme.primary,
-                                      size: 40,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.secondary,
-                                shape: BoxShape.circle,
-                              ),
-                              child: IconButton(
-                                icon: Icon(
-                                  Icons.photo_camera,
-                                  color: theme.colorScheme.surface,
-                                  size: 20,
-                                ),
-                                onPressed: _isUpdatingProfile
-                                    ? null
-                                    : _updateProfileImage,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-
-                    // Name Field
-                    Text(
-                      'Name',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: theme.colorScheme.onBackground,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _nameController,
-                      enabled: !_isLoading && !_isUpdatingProfile,
-                      decoration: InputDecoration(
-                        hintText: 'Enter your name',
-                        hintStyle: GoogleFonts.poppins(
-                          color:
-                              theme.colorScheme.onBackground.withOpacity(0.5),
-                        ),
-                        filled: true,
-                        fillColor: theme.colorScheme.surface,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        prefixIcon: Icon(
-                          Iconsax.user,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Bio Field
-                    Text(
-                      'Bio',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _bioController,
-                      enabled: !_isLoading && !_isUpdatingProfile,
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        hintText: 'Write something about yourself',
-                        hintStyle: GoogleFonts.poppins(
-                          color:
-                              theme.colorScheme.onBackground.withOpacity(0.5),
-                        ),
-                        filled: true,
-                        fillColor: theme.colorScheme.surface,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        prefixIcon: Icon(
-                          Iconsax.document_text,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-
-                    // Save Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: (_isLoading || _isUpdatingProfile)
-                            ? null
-                            : _updateProfile,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: theme.colorScheme.secondary,
-                          foregroundColor: theme.colorScheme.surface,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: _isLoading
-                            ? const CircularProgressIndicator(
-                                color: Colors.white,
-                              )
-                            : Text(
-                                'Save Changes',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Logout Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed:
-                            (_isLoading || _isUpdatingProfile || _isSigningOut)
-                                ? null
-                                : _handleSignOut,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: theme.colorScheme.error,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          side: BorderSide(color: theme.colorScheme.error),
-                        ),
-                        child: _isSigningOut
-                            ? Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        theme.colorScheme.error,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    'Signing out...',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : Text(
-                                'Logout',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          'Settings',
+          style: GoogleFonts.poppins(
+            color: theme.colorScheme.primary,
+            fontWeight: FontWeight.w600,
           ),
         ),
-        if (_isUpdatingProfile)
-          Container(
-            color: Colors.black54,
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+        elevation: 0,
+        backgroundColor: theme.scaffoldBackgroundColor,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back_ios_new,
+            color: theme.colorScheme.primary,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Profile Image
+            Center(
+              child: Stack(
                 children: [
-                  CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      theme.colorScheme.primary,
-                    ),
+                  CircleAvatar(
+                    radius: 50,
+                    backgroundColor: theme.colorScheme.surface,
+                    backgroundImage: _selectedImage != null
+                        ? MemoryImage(_selectedImage!)
+                        : (user.profileImage != null
+                            ? NetworkImage(user.profileImage!)
+                            : null) as ImageProvider?,
+                    child: _selectedImage == null && user.profileImage == null
+                        ? Icon(Icons.person,
+                            size: 50, color: theme.colorScheme.primary)
+                        : null,
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Updating profile picture...',
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontSize: 16,
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: GestureDetector(
+                      onTap: () => _pickImage(ImageSource.gallery),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.secondary,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.camera_alt,
+                          size: 20,
+                          color: theme.colorScheme.surface,
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-      ],
+            const SizedBox(height: 32),
+
+            // Name Field
+            Text(
+              'Name',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _nameController,
+              style: TextStyle(color: theme.colorScheme.primary),
+              decoration: InputDecoration(
+                hintText: 'Enter your name',
+                hintStyle: TextStyle(
+                    color: theme.colorScheme.primary.withOpacity(0.5)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: theme.colorScheme.primary),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                      color: theme.colorScheme.primary.withOpacity(0.5)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: theme.colorScheme.primary),
+                ),
+                filled: true,
+                fillColor: theme.colorScheme.surface,
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Bio Field
+            Text(
+              'Bio',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _bioController,
+              style: TextStyle(color: theme.colorScheme.primary),
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: 'Write something about yourself',
+                hintStyle: TextStyle(
+                    color: theme.colorScheme.primary.withOpacity(0.5)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: theme.colorScheme.primary),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                      color: theme.colorScheme.primary.withOpacity(0.5)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: theme.colorScheme.primary),
+                ),
+                filled: true,
+                fillColor: theme.colorScheme.surface,
+              ),
+            ),
+            const SizedBox(height: 32),
+
+            // Save Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _saveChanges,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.secondary,
+                  foregroundColor: theme.colorScheme.surface,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: _isLoading
+                    ? SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                              theme.colorScheme.surface),
+                        ),
+                      )
+                    : Text(
+                        'Save Changes',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

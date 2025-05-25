@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/View/Interface/Feed/interface_page.dart';
 import 'package:frontend/View/Interface/Post/post_page.dart';
 import 'package:frontend/View/Interface/Profile/profile_page.dart';
+import 'package:iconsax/iconsax.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -76,11 +77,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildNavItem(icon: Icons.home, index: 0),
-                  _buildNavItem(icon: Icons.search, index: 1),
-                  _buildNavItem(icon: Icons.add_box_rounded, index: 2),
-                  _buildNavItem(icon: Icons.notifications, index: 3),
-                  _buildNavItem(icon: Icons.person, index: 4),
+                  _buildNavItem(icon: Iconsax.home, index: 0),
+                  _buildNavItem(icon: Iconsax.search_normal, index: 1),
+                  _buildNavItem(icon: Iconsax.add_circle, index: 2),
+                  _buildNavItem(icon: Iconsax.notification, index: 3),
+                  _buildNavItem(icon: Iconsax.user, index: 4),
                 ],
               ),
             ),

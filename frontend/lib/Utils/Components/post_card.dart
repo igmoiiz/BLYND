@@ -133,7 +133,9 @@ class PostCard extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(14),
               child: CachedNetworkImage(
-                imageUrl: postImageUrl,
+                imageUrl: postImageUrl.isEmpty
+                    ? 'https://via.placeholder.com/400'
+                    : postImageUrl,
                 width: double.infinity,
                 height: size.width,
                 fit: BoxFit.cover,
@@ -152,31 +154,34 @@ class PostCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                errorWidget: (context, url, error) => Container(
-                  width: double.infinity,
-                  height: size.width,
-                  color: theme.colorScheme.surface,
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Iconsax.image,
-                          color: theme.colorScheme.primary,
-                          size: 40,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Failed to load image',
-                          style: GoogleFonts.poppins(
+                errorWidget: (context, url, error) {
+                  debugPrint('Image error: $error for URL: $url');
+                  return Container(
+                    width: double.infinity,
+                    height: size.width,
+                    color: theme.colorScheme.surface,
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Iconsax.image,
                             color: theme.colorScheme.primary,
-                            fontSize: 14,
+                            size: 40,
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 8),
+                          Text(
+                            'Image not available',
+                            style: GoogleFonts.poppins(
+                              color: theme.colorScheme.primary,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ),
             const SizedBox(height: 10),
@@ -233,42 +238,38 @@ class PostCard extends StatelessWidget {
 
             /// Action Buttons
             Row(
-              mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 IconButton(
-                  onPressed: onLike,
                   icon: Icon(
-                    isLiked ? Iconsax.heart5 : Iconsax.heart,
-                    color: isLiked ? Colors.red : theme.iconTheme.color,
-                    size: 26,
+                    isLiked ? Icons.favorite : Icons.favorite_border,
+                    color:
+                        isLiked ? Colors.red : theme.colorScheme.onBackground,
                   ),
+                  onPressed: onLike,
                 ),
                 const SizedBox(width: 4),
+                Text(
+                  likeCount.toString(),
+                  style: GoogleFonts.poppins(
+                    color: theme.colorScheme.onBackground,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(width: 16),
                 IconButton(
-                  onPressed: onComment,
                   icon: Icon(
                     Iconsax.message,
-                    size: 24,
-                    color: theme.iconTheme.color,
+                    color: theme.colorScheme.onBackground,
                   ),
-                ),
-                const SizedBox(width: 4),
-                IconButton(
-                  onPressed: () {},
-                  icon: Icon(
-                    Iconsax.send_2,
-                    size: 24,
-                    color: theme.iconTheme.color,
-                  ),
+                  onPressed: onComment,
                 ),
                 const Spacer(),
                 IconButton(
-                  onPressed: onSave,
                   icon: Icon(
-                    isSaved ? Iconsax.bookmark5 : Iconsax.bookmark,
-                    size: 24,
-                    color: theme.iconTheme.color,
+                    isSaved ? Icons.bookmark : Icons.bookmark_border,
+                    color: theme.colorScheme.onBackground,
                   ),
+                  onPressed: onSave,
                 ),
               ],
             ),

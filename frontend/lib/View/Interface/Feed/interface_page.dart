@@ -1,11 +1,11 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:frontend/services/api_service.dart';
-import 'package:frontend/Model/post_model.dart';
+import 'package:provider/provider.dart';
+import 'package:frontend/providers/post_provider.dart';
+import 'package:frontend/providers/user_provider.dart';
 import 'package:frontend/Utils/Components/post_card.dart';
 import 'package:frontend/Utils/Components/comment_sheet.dart';
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
@@ -18,15 +18,12 @@ class InterfacePage extends StatefulWidget {
 }
 
 class _InterfacePageState extends State<InterfacePage> {
-  List<PostModel> _posts = [];
-  bool _isLoading = false;
-  int _currentPage = 1;
   final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _loadPosts();
+    Future.microtask(() => _loadPosts());
     _scrollController.addListener(_onScroll);
   }
 
@@ -37,35 +34,7 @@ class _InterfacePageState extends State<InterfacePage> {
   }
 
   Future<void> _loadPosts({bool refresh = false}) async {
-    if (_isLoading) return;
-
-    setState(() {
-      _isLoading = true;
-      if (refresh) {
-        _currentPage = 1;
-        _posts = [];
-      }
-    });
-
-    try {
-      final newPosts = await ApiService.getPosts(page: _currentPage);
-      setState(() {
-        if (refresh) {
-          _posts = newPosts;
-        } else {
-          _posts = [..._posts, ...newPosts];
-        }
-        _currentPage++;
-      });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading posts: $e')),
-      );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    await context.read<PostProvider>().loadPosts(refresh: refresh);
   }
 
   void _onScroll() {
@@ -81,14 +50,16 @@ class _InterfacePageState extends State<InterfacePage> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final postProvider = context.watch<PostProvider>();
+    final currentUser = context.watch<UserProvider>().user;
 
     return Scaffold(
-      backgroundColor: colorScheme.surface,
+      backgroundColor: theme.colorScheme.surface,
       body: LiquidPullToRefresh(
         onRefresh: _onRefresh,
-        color: colorScheme.primary,
-        backgroundColor: colorScheme.surface,
+        color: theme.colorScheme.primary,
+        backgroundColor: theme.colorScheme.surface,
         height: 100,
         child: CustomScrollView(
           controller: _scrollController,
@@ -97,31 +68,34 @@ class _InterfacePageState extends State<InterfacePage> {
             // App Bar
             SliverAppBar(
               floating: true,
-              backgroundColor: colorScheme.surface,
+              backgroundColor: theme.colorScheme.surface,
               title: Text(
                 'BLYND',
                 style: GoogleFonts.poppins(
-                  color: colorScheme.primary,
+                  color: theme.colorScheme.primary,
                   fontWeight: FontWeight.bold,
                   fontSize: 24,
                 ),
               ),
               actions: [
-                IconButton(
-                  icon: Icon(
-                    FontAwesomeIcons.message,
-                    color: colorScheme.primary,
-                    size: 20,
+                Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: IconButton(
+                    icon: Icon(
+                      Iconsax.message,
+                      color: theme.colorScheme.primary,
+                      size: 30,
+                    ),
+                    onPressed: () {
+                      // Navigate to messages
+                    },
                   ),
-                  onPressed: () {
-                    // Navigate to messages
-                  },
                 ),
               ],
             ),
 
             // Posts
-            if (_posts.isEmpty && !_isLoading)
+            if (postProvider.posts.isEmpty && !postProvider.isLoading)
               SliverFillRemaining(
                 child: Center(
                   child: Column(
@@ -129,14 +103,14 @@ class _InterfacePageState extends State<InterfacePage> {
                     children: [
                       Icon(
                         Iconsax.image,
-                        color: colorScheme.primary,
+                        color: theme.colorScheme.primary,
                         size: 48,
                       ),
                       const SizedBox(height: 16),
                       Text(
                         "No posts yet",
                         style: GoogleFonts.poppins(
-                          color: colorScheme.primary,
+                          color: theme.colorScheme.primary,
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
                         ),
@@ -149,14 +123,14 @@ class _InterfacePageState extends State<InterfacePage> {
               SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
-                    if (index == _posts.length) {
-                      return _isLoading
+                    if (index == postProvider.posts.length) {
+                      return postProvider.isLoading
                           ? Center(
                               child: Padding(
                                 padding: const EdgeInsets.all(16.0),
                                 child: CircularProgressIndicator(
                                   valueColor: AlwaysStoppedAnimation<Color>(
-                                    colorScheme.primary,
+                                    theme.colorScheme.primary,
                                   ),
                                 ),
                               ),
@@ -164,15 +138,17 @@ class _InterfacePageState extends State<InterfacePage> {
                           : null;
                     }
 
-                    final post = _posts[index];
+                    final post = postProvider.posts[index];
                     return PostCard(
                       userName: post.userName,
-                      userImageUrl: post.userProfileImage ??
-                          'https://via.placeholder.com/150',
-                      postImageUrl:
-                          post.postImage ?? 'https://via.placeholder.com/150',
+                      userImageUrl: post.userProfileImage?.isEmpty ?? true
+                          ? 'https://via.placeholder.com/150'
+                          : post.userProfileImage!,
+                      postImageUrl: post.postImage?.isEmpty ?? true
+                          ? 'https://via.placeholder.com/400'
+                          : post.postImage!,
                       description: post.caption,
-                      isLiked: post.likedBy.contains(_getCurrentUserId()),
+                      isLiked: post.likedBy.contains(currentUser?.id),
                       onLike: () => _handleLike(post.postId),
                       onComment: () => _showCommentSheet(post.postId),
                       onSave: () {},
@@ -185,7 +161,8 @@ class _InterfacePageState extends State<InterfacePage> {
                       likedBy: post.likedBy,
                     );
                   },
-                  childCount: _posts.length + (_isLoading ? 1 : 0),
+                  childCount: postProvider.posts.length +
+                      (postProvider.isLoading ? 1 : 0),
                 ),
               ),
           ],
@@ -194,29 +171,26 @@ class _InterfacePageState extends State<InterfacePage> {
     );
   }
 
-  String? _getCurrentUserId() {
-    // TODO: Implement getting current user ID from shared preferences or state management
-    return null;
-  }
-
   Future<void> _handleLike(String postId) async {
     try {
-      final updatedPost = await ApiService.likePost(postId);
-      setState(() {
-        final index = _posts.indexWhere((p) => p.postId == postId);
-        if (index != -1) {
-          _posts[index] = updatedPost;
-        }
-      });
+      await context.read<PostProvider>().likePost(postId);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error liking post: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error liking post: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   void _showCommentSheet(String postId) {
-    final post = _posts.firstWhere((p) => p.postId == postId);
+    final post = context
+        .read<PostProvider>()
+        .posts
+        .firstWhere((p) => p.postId == postId);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -225,20 +199,19 @@ class _InterfacePageState extends State<InterfacePage> {
         comments: post.comments,
         onCommentAdded: (text) async {
           try {
-            final updatedPost = await ApiService.commentOnPost(
-              postId: postId,
-              text: text,
-            );
-            setState(() {
-              final index = _posts.indexWhere((p) => p.postId == postId);
-              if (index != -1) {
-                _posts[index] = updatedPost;
-              }
-            });
+            await context.read<PostProvider>().addComment(
+                  postId: postId,
+                  text: text,
+                );
           } catch (e) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error adding comment: $e')),
-            );
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Error adding comment: $e'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
           }
         },
       ),

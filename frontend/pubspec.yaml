@@ -23,7 +23,7 @@ dependencies:
   iconsax: ^0.0.8
   like_button: ^2.1.0
   liquid_pull_to_refresh: ^3.0.1
-  provider: ^6.1.5
+  provider: ^6.1.1
 
 dev_dependencies:
   flutter_test:

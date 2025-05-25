@@ -50,22 +50,51 @@ class _PostDetailPageState extends State<PostDetailPage> {
   }
 
   Future<void> _addComment() async {
-    if (_commentController.text.trim().isEmpty) return;
+    final commentText = _commentController.text.trim();
+    if (commentText.isEmpty) return;
 
     setState(() => _isLoading = true);
     try {
+      // Optimistically add comment to UI
+      final tempComment = CommentModel(
+        userId: 'temp',
+        userName: 'You',
+        text: commentText,
+        createdAt: DateTime.now(),
+      );
+
+      setState(() {
+        _commentController.clear();
+        _post = _post.copyWith(
+          comments: [..._post.comments, tempComment],
+        );
+      });
+
+      // Make API call
       final updatedPost = await ApiService.commentOnPost(
         postId: _post.postId,
-        text: _commentController.text.trim(),
+        text: commentText,
       );
-      setState(() {
-        _post = updatedPost;
-        _commentController.clear();
-      });
-    } catch (e) {
+
+      // Update with server response
       if (mounted) {
+        setState(() {
+          _post = updatedPost;
+        });
+      }
+    } catch (e) {
+      // Revert optimistic update on error
+      if (mounted) {
+        setState(() {
+          _post = _post.copyWith(
+            comments: _post.comments.where((c) => c.userId != 'temp').toList(),
+          );
+        });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error adding comment: $e')),
+          SnackBar(
+            content: Text('Error adding comment: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
