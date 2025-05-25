@@ -171,9 +171,8 @@ class _InterfacePageState extends State<InterfacePage> {
                           'https://via.placeholder.com/150',
                       postImageUrl:
                           post.postImage ?? 'https://via.placeholder.com/150',
-                      description: post.caption ?? '',
-                      isLiked:
-                          post.likedBy?.contains(_getCurrentUserId()) ?? false,
+                      description: post.caption,
+                      isLiked: post.likedBy.contains(_getCurrentUserId()),
                       onLike: () => _handleLike(post.postId),
                       onComment: () => _showCommentSheet(post.postId),
                       onSave: () {},
