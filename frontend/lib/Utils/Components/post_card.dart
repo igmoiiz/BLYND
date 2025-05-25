@@ -1,12 +1,12 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
+import 'package:frontend/Model/post_model.dart';
+import 'package:frontend/Utils/Navigation/app_custom_route.dart';
+import 'package:frontend/View/Interface/Feed/post_detail_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:social_media/Utils/Navigation/app_custom_route.dart';
-import 'package:social_media/View/Interface/Feed/post_detail_page.dart';
-import 'package:social_media/Model/post_model.dart';
 
 class PostCard extends StatelessWidget {
   final String userName;
@@ -20,7 +20,7 @@ class PostCard extends StatelessWidget {
   final VoidCallback onSave;
   final DateTime createdAt;
   final int likeCount;
-  final List<Map<String, dynamic>>? comments;
+  final List<CommentModel> comments;
   final String postId;
   final String userEmail;
   final String userId;
@@ -39,7 +39,7 @@ class PostCard extends StatelessWidget {
     required this.onSave,
     required this.createdAt,
     this.likeCount = 0,
-    this.comments,
+    this.comments = const [],
     required this.postId,
     required this.userEmail,
     required this.userId,
@@ -90,26 +90,24 @@ class PostCard extends StatelessWidget {
                     fit: BoxFit.cover,
                     useOldImageOnUrlChange: true,
                     fadeInDuration: const Duration(milliseconds: 200),
-                    placeholder:
-                        (context, url) => Container(
-                          color: theme.colorScheme.surface,
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                theme.colorScheme.primary,
-                              ),
-                              strokeWidth: 2,
-                            ),
+                    placeholder: (context, url) => Container(
+                      color: theme.colorScheme.surface,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            theme.colorScheme.primary,
                           ),
+                          strokeWidth: 2,
                         ),
-                    errorWidget:
-                        (context, url, error) => Container(
-                          color: theme.colorScheme.surface,
-                          child: Icon(
-                            Iconsax.user,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      color: theme.colorScheme.surface,
+                      child: Icon(
+                        Iconsax.user,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -141,46 +139,44 @@ class PostCard extends StatelessWidget {
                 fit: BoxFit.cover,
                 useOldImageOnUrlChange: true,
                 fadeInDuration: const Duration(milliseconds: 300),
-                placeholder:
-                    (context, url) => Container(
-                      width: double.infinity,
-                      height: size.width,
-                      color: theme.colorScheme.surface,
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            theme.colorScheme.primary,
+                placeholder: (context, url) => Container(
+                  width: double.infinity,
+                  height: size.width,
+                  color: theme.colorScheme.surface,
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        theme.colorScheme.primary,
+                      ),
+                      strokeWidth: 2,
+                    ),
+                  ),
+                ),
+                errorWidget: (context, url, error) => Container(
+                  width: double.infinity,
+                  height: size.width,
+                  color: theme.colorScheme.surface,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Iconsax.image,
+                          color: theme.colorScheme.primary,
+                          size: 40,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Failed to load image',
+                          style: GoogleFonts.poppins(
+                            color: theme.colorScheme.primary,
+                            fontSize: 14,
                           ),
-                          strokeWidth: 2,
                         ),
-                      ),
+                      ],
                     ),
-                errorWidget:
-                    (context, url, error) => Container(
-                      width: double.infinity,
-                      height: size.width,
-                      color: theme.colorScheme.surface,
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Iconsax.image,
-                              color: theme.colorScheme.primary,
-                              size: 40,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Failed to load image',
-                              style: GoogleFonts.poppins(
-                                color: theme.colorScheme.primary,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 10),
@@ -278,14 +274,14 @@ class PostCard extends StatelessWidget {
             ),
 
             /// Comments Preview
-            if (comments != null && comments!.isNotEmpty)
+            if (comments.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'View all ${comments!.length} comments',
+                      'View all ${comments.length} comments',
                       style: GoogleFonts.poppins(
                         fontSize: 14,
                         color: theme.colorScheme.onBackground.withOpacity(0.6),
@@ -293,9 +289,7 @@ class PostCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     // Show last 2 comments
-                    ...comments!
-                        .take(2)
-                        .map(
+                    ...comments.take(2).map(
                           (comment) => Padding(
                             padding: const EdgeInsets.only(bottom: 4),
                             child: RichText(
@@ -306,12 +300,12 @@ class PostCard extends StatelessWidget {
                                 ),
                                 children: [
                                   TextSpan(
-                                    text: '${comment['userName']} ',
+                                    text: '${comment.userName} ',
                                     style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  TextSpan(text: comment['comment']),
+                                  TextSpan(text: comment.text),
                                 ],
                               ),
                             ),

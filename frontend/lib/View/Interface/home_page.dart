@@ -3,9 +3,9 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:social_media/View/Interface/Feed/interface_page.dart';
-import 'package:social_media/View/Interface/Post/post_page.dart';
-import 'package:social_media/View/Interface/Profile/profile_page.dart';
+import 'package:frontend/View/Interface/Feed/interface_page.dart';
+import 'package:frontend/View/Interface/Post/post_page.dart';
+import 'package:frontend/View/Interface/Profile/profile_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -19,11 +19,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late final TabController _tabController;
 
   final List<Widget> _pages = [
-    InterfacePage(),
-    Center(child: Text('Search')),
-    CreatePostPage(),
-    Center(child: Text('Notifications')),
-    ProfilePage(),
+    const InterfacePage(),
+    const Center(child: Text('Search')),
+    const CreatePostPage(),
+    const Center(child: Text('Notifications')),
+    const ProfilePage(),
   ];
 
   @override
@@ -64,10 +64,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             child: Container(
               height: 70,
               decoration: BoxDecoration(
-                color:
-                    isDark
-                        ? Colors.white10.withOpacity(0.2)
-                        : Colors.white.withOpacity(0.3),
+                color: isDark
+                    ? Colors.white10.withOpacity(0.2)
+                    : Colors.white.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(30),
                 border: Border.all(
                   color: isDark ? Colors.white10 : Colors.white70,
@@ -93,10 +92,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Widget _buildNavItem({required IconData icon, required int index}) {
     final isSelected = _selectedIndex == index;
-    final color =
-        isSelected
-            ? Theme.of(context).colorScheme.secondary
-            : Theme.of(context).colorScheme.primary.withOpacity(0.5);
+    final color = isSelected
+        ? Theme.of(context).colorScheme.secondary
+        : Theme.of(context).colorScheme.primary.withOpacity(0.5);
     return GestureDetector(
       onTap: () {
         setState(() {

@@ -2,212 +2,244 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:provider/provider.dart';
-import 'package:social_media/Controller/Services/Database/database_services.dart';
-import 'package:social_media/Utils/Components/post_card.dart';
-import 'package:social_media/Model/post_model.dart';
-import 'package:social_media/Utils/Components/comment_sheet.dart';
+import 'package:frontend/services/api_service.dart';
+import 'package:frontend/Model/post_model.dart';
+import 'package:frontend/Utils/Components/post_card.dart';
+import 'package:frontend/Utils/Components/comment_sheet.dart';
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 
-class InterfacePage extends StatelessWidget {
+class InterfacePage extends StatefulWidget {
   const InterfacePage({super.key});
 
-  Future<void> _onRefresh(BuildContext context) async {
-    // Trigger a rebuild of the StreamBuilder
-    context.read<DatabaseServices>().refreshPosts();
+  @override
+  State<InterfacePage> createState() => _InterfacePageState();
+}
+
+class _InterfacePageState extends State<InterfacePage> {
+  List<PostModel> _posts = [];
+  bool _isLoading = false;
+  int _currentPage = 1;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPosts();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadPosts({bool refresh = false}) async {
+    if (_isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+      if (refresh) {
+        _currentPage = 1;
+        _posts = [];
+      }
+    });
+
+    try {
+      final newPosts = await ApiService.getPosts(page: _currentPage);
+      setState(() {
+        if (refresh) {
+          _posts = newPosts;
+        } else {
+          _posts = [..._posts, ...newPosts];
+        }
+        _currentPage++;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading posts: $e')),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      _loadPosts();
+    }
+  }
+
+  Future<void> _onRefresh() async {
+    await _loadPosts(refresh: true);
   }
 
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      body: SafeArea(
-        child: LiquidPullToRefresh(
-          onRefresh: () => _onRefresh(context),
-          color: color.primary,
-          borderWidth: 5,
-          springAnimationDurationInMilliseconds: 1000,
-          backgroundColor: color.surface,
-          height: 100,
-          animSpeedFactor: 3,
-          showChildOpacityTransition: true,
-          child: CustomScrollView(
-            physics: const ScrollPhysics(parent: BouncingScrollPhysics()),
-            slivers: [
-              SliverAppBar(
-                elevation: 0.0,
-                pinned: false,
-                floating: true,
-                title: Text(
-                  "BLYND",
-                  style: TextStyle(
-                    color: color.primary,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1,
-                    fontFamily: GoogleFonts.montserrat().fontFamily,
+      backgroundColor: colorScheme.surface,
+      body: LiquidPullToRefresh(
+        onRefresh: _onRefresh,
+        color: colorScheme.primary,
+        backgroundColor: colorScheme.surface,
+        height: 100,
+        child: CustomScrollView(
+          controller: _scrollController,
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            // App Bar
+            SliverAppBar(
+              floating: true,
+              backgroundColor: colorScheme.surface,
+              title: Text(
+                'BLYND',
+                style: GoogleFonts.poppins(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 24,
+                ),
+              ),
+              actions: [
+                IconButton(
+                  icon: Icon(
+                    FontAwesomeIcons.message,
+                    color: colorScheme.primary,
+                    size: 20,
+                  ),
+                  onPressed: () {
+                    // Navigate to messages
+                  },
+                ),
+              ],
+            ),
+
+            // Posts
+            if (_posts.isEmpty && !_isLoading)
+              SliverFillRemaining(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Iconsax.image,
+                        color: colorScheme.primary,
+                        size: 48,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        "No posts yet",
+                        style: GoogleFonts.poppins(
+                          color: colorScheme.primary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                actions: [
-                  IconButton(
-                    onPressed: () {},
-                    icon: Icon(FontAwesomeIcons.facebookMessenger),
-                  ),
-                ],
+              )
+            else
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    if (index == _posts.length) {
+                      return _isLoading
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    colorScheme.primary,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : null;
+                    }
+
+                    final post = _posts[index];
+                    return PostCard(
+                      userName: post.userName ?? 'Unknown User',
+                      userImageUrl: post.userProfileImage ??
+                          'https://via.placeholder.com/150',
+                      postImageUrl:
+                          post.postImage ?? 'https://via.placeholder.com/150',
+                      description: post.caption ?? '',
+                      isLiked:
+                          post.likedBy?.contains(_getCurrentUserId()) ?? false,
+                      onLike: () => _handleLike(post.postId),
+                      onComment: () => _showCommentSheet(post.postId),
+                      onSave: () {},
+                      createdAt: post.createdAt ?? DateTime.now(),
+                      likeCount: post.likeCount ?? 0,
+                      comments: post.comments ?? [],
+                      postId: post.postId,
+                      userEmail: post.userEmail ?? '',
+                      userId: post.userId ?? '',
+                      likedBy: post.likedBy ?? [],
+                    );
+                  },
+                  childCount: _posts.length + (_isLoading ? 1 : 0),
+                ),
               ),
-
-              Consumer<DatabaseServices>(
-                builder: (context, databaseProvider, child) {
-                  return StreamBuilder<List<PostModel>>(
-                    stream: databaseProvider.getPostsStream(),
-                    builder: (
-                      context,
-                      AsyncSnapshot<List<PostModel>> snapshot,
-                    ) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return SliverToBoxAdapter(
-                          child: Container(
-                            height: MediaQuery.of(context).size.height * 0.8,
-                            color: Theme.of(context).colorScheme.surface,
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  CircularProgressIndicator(
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      color.primary,
-                                    ),
-                                    strokeWidth: 2,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    "Loading posts...",
-                                    style: GoogleFonts.poppins(
-                                      color: color.primary,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-
-                      if (snapshot.hasError) {
-                        return SliverToBoxAdapter(
-                          child: Container(
-                            height: MediaQuery.of(context).size.height * 0.8,
-                            color: Theme.of(context).colorScheme.surface,
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.error_outline_rounded,
-                                    color: color.error,
-                                    size: 48,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    "Something went wrong: ${snapshot.error}",
-                                    style: GoogleFonts.poppins(
-                                      color: color.error,
-                                      fontSize: 14,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-
-                      final posts = snapshot.data;
-                      if (posts == null || posts.isEmpty) {
-                        return SliverToBoxAdapter(
-                          child: Container(
-                            height: MediaQuery.of(context).size.height * 0.8,
-                            color: Theme.of(context).colorScheme.surface,
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Iconsax.image,
-                                    color: color.primary,
-                                    size: 48,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    "No posts yet",
-                                    style: GoogleFonts.poppins(
-                                      color: color.primary,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-
-                      // Ensure posts are sorted by createdAt in descending order
-                      final sortedPosts = List<PostModel>.from(posts)..sort(
-                        (a, b) => (b.createdAt ?? DateTime.now()).compareTo(
-                          a.createdAt ?? DateTime.now(),
-                        ),
-                      );
-
-                      return SliverList.builder(
-                        itemCount: sortedPosts.length,
-                        itemBuilder: (context, index) {
-                          final post = sortedPosts[index];
-                          return PostCard(
-                            userName: post.userName ?? 'Unknown User',
-                            userImageUrl:
-                                post.userProfileImage ??
-                                'https://via.placeholder.com/150',
-                            postImageUrl:
-                                post.postImage ??
-                                'https://via.placeholder.com/150',
-                            description: post.caption ?? '',
-                            isLiked: databaseProvider.hasUserLikedPost(
-                              post.likedBy ?? [],
-                            ),
-                            onLike:
-                                () => databaseProvider.toggleLike(post.postId!),
-                            onComment: () {
-                              showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                builder:
-                                    (context) => CommentSheet(
-                                      postId: post.postId!,
-                                      comments: post.comments ?? [],
-                                    ),
-                              );
-                            },
-                            onSave: () {},
-                            createdAt: post.createdAt ?? DateTime.now(),
-                            likeCount: post.likeCount ?? 0,
-                            comments: post.comments,
-                            postId: post.postId!,
-                            userEmail: post.userEmail ?? '',
-                            userId: post.userId ?? '',
-                            likedBy: post.likedBy ?? [],
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
-              ),
-            ],
-          ),
+          ],
         ),
+      ),
+    );
+  }
+
+  String? _getCurrentUserId() {
+    // TODO: Implement getting current user ID from shared preferences or state management
+    return null;
+  }
+
+  Future<void> _handleLike(String postId) async {
+    try {
+      final updatedPost = await ApiService.likePost(postId);
+      setState(() {
+        final index = _posts.indexWhere((p) => p.postId == postId);
+        if (index != -1) {
+          _posts[index] = updatedPost;
+        }
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error liking post: $e')),
+      );
+    }
+  }
+
+  void _showCommentSheet(String postId) {
+    final post = _posts.firstWhere((p) => p.postId == postId);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => CommentSheet(
+        postId: postId,
+        comments: post.comments,
+        onCommentAdded: (text) async {
+          try {
+            final updatedPost = await ApiService.commentOnPost(
+              postId: postId,
+              text: text,
+            );
+            setState(() {
+              final index = _posts.indexWhere((p) => p.postId == postId);
+              if (index != -1) {
+                _posts[index] = updatedPost;
+              }
+            });
+          } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error adding comment: $e')),
+            );
+          }
+        },
       ),
     );
   }

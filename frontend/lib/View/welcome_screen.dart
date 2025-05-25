@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:social_media/Utils/Components/custom_button.dart';
-import 'package:social_media/Utils/size.dart';
+import 'package:frontend/Utils/Components/custom_button.dart';
+import 'package:frontend/Utils/size.dart';
 
 class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key});
@@ -26,15 +26,15 @@ class WelcomePage extends StatelessWidget {
                         verticalSpace(33),
                         Theme.of(context).brightness == Brightness.light
                             ? Image.asset(
-                              'assets/icons/icon_blynd_light.png',
-                              height: 199,
-                              width: 280,
-                            )
+                                'assets/icons/icon_blynd_light.png',
+                                height: 199,
+                                width: 280,
+                              )
                             : Image.asset(
-                              'assets/icons/icon_blynd_dark.png',
-                              height: 199,
-                              width: 280,
-                            ),
+                                'assets/icons/icon_blynd_dark.png',
+                                height: 199,
+                                width: 280,
+                              ),
                         Center(
                           child: Text(
                             "BLYND sees what others don't!",
@@ -49,15 +49,15 @@ class WelcomePage extends StatelessWidget {
                         CustomButton(
                           text: "Login",
                           isLoading: false,
-                          onTap:
-                              () => Navigator.of(context).pushNamed('/login'),
+                          onTap: () =>
+                              Navigator.of(context).pushNamed('/login'),
                         ),
                         verticalSpace(14),
                         CustomButton(
                           text: "Register",
                           isLoading: false,
-                          onTap:
-                              () => Navigator.of(context).pushNamed('/sign_up'),
+                          onTap: () =>
+                              Navigator.of(context).pushNamed('/sign_up'),
                         ),
                       ],
                     ),

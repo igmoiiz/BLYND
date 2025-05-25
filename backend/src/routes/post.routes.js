@@ -1,55 +1,41 @@
 const express = require('express');
+const { body } = require('express-validator');
 const multer = require('multer');
-const { protect } = require('../middleware/auth.middleware');
 const Post = require('../models/post.model');
-const User = require('../models/user.model');
-const supabaseService = require('../services/supabase.service');
+const { protect } = require('../middleware/auth.middleware');
+const { uploadPostImage, BUCKET_NAMES } = require('../services/supabase.service');
 
 const router = express.Router();
 const upload = multer();
 
-// Create a new post
+// Create post
 router.post('/',
   protect,
   upload.single('postImage'),
+  [
+    body('caption').trim().notEmpty().withMessage('Caption is required')
+  ],
   async (req, res) => {
     try {
       const { caption } = req.body;
+      let postImageUrl = '';
 
-      if (!req.file) {
-        return res.status(400).json({
-          success: false,
-          message: 'Please provide an image'
-        });
+      if (req.file) {
+        postImageUrl = await uploadPostImage(req.file, req.user._id);
       }
 
-      if (!caption) {
-        return res.status(400).json({
-          success: false,
-          message: 'Please provide a caption'
-        });
-      }
-
-      // Upload image to Supabase
-      await supabaseService.ensureBucketExists(process.env.SUPABASE_POST_BUCKET);
-      const imageUrl = await supabaseService.uploadPostImage(req.file, req.user._id);
-
-      // Create post
       const post = await Post.create({
         userId: req.user._id,
         userEmail: req.user.email,
-        userName: req.user.name,
+        userName: req.user.userName,
         userProfileImage: req.user.profileImage,
         caption,
-        postImage: imageUrl,
-        likeCount: 0,
-        likedBy: [],
-        comments: []
+        postImage: postImageUrl
       });
 
       res.status(201).json({
         success: true,
-        post
+        post: post.toClientFormat()
       });
     } catch (error) {
       console.error('Create post error:', error);
@@ -71,18 +57,18 @@ router.get('/', protect, async (req, res) => {
     const posts = await Post.find()
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit)
-      .lean();
+      .limit(limit);
 
     const total = await Post.countDocuments();
 
     res.json({
       success: true,
-      posts,
+      posts: posts.map(post => post.toClientFormat()),
       pagination: {
-        current: page,
-        pages: Math.ceil(total / limit),
-        total
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
       }
     });
   } catch (error) {
@@ -98,12 +84,11 @@ router.get('/', protect, async (req, res) => {
 router.get('/user/:userId', protect, async (req, res) => {
   try {
     const posts = await Post.find({ userId: req.params.userId })
-      .sort({ createdAt: -1 })
-      .lean();
+      .sort({ createdAt: -1 });
 
     res.json({
       success: true,
-      posts
+      posts: posts.map(post => post.toClientFormat())
     });
   } catch (error) {
     console.error('Get user posts error:', error);
@@ -114,11 +99,10 @@ router.get('/user/:userId', protect, async (req, res) => {
   }
 });
 
-// Like/Unlike a post
+// Like/Unlike post
 router.post('/:postId/like', protect, async (req, res) => {
   try {
     const post = await Post.findById(req.params.postId);
-
     if (!post) {
       return res.status(404).json({
         success: false,
@@ -126,107 +110,89 @@ router.post('/:postId/like', protect, async (req, res) => {
       });
     }
 
-    const isLiked = post.likedBy.includes(req.user._id);
-
-    if (isLiked) {
-      // Unlike
-      await Post.findByIdAndUpdate(post._id, {
-        $pull: { likedBy: req.user._id },
-        $inc: { likeCount: -1 }
-      });
+    const userIndex = post.likedBy.indexOf(req.user._id);
+    if (userIndex === -1) {
+      // Like post
+      post.likedBy.push(req.user._id);
+      post.likeCount = post.likedBy.length;
     } else {
-      // Like
-      await Post.findByIdAndUpdate(post._id, {
-        $push: { likedBy: req.user._id },
-        $inc: { likeCount: 1 }
-      });
+      // Unlike post
+      post.likedBy.splice(userIndex, 1);
+      post.likeCount = post.likedBy.length;
     }
+
+    await post.save();
 
     res.json({
       success: true,
-      message: isLiked ? 'Post unliked' : 'Post liked'
+      post: post.toClientFormat()
     });
   } catch (error) {
     console.error('Like/Unlike post error:', error);
     res.status(500).json({
       success: false,
-      message: 'Error processing like/unlike'
+      message: 'Error updating post like'
     });
   }
 });
 
-// Add comment to a post
-router.post('/:postId/comment', protect, async (req, res) => {
-  try {
-    const { comment } = req.body;
+// Add comment
+router.post('/:postId/comment',
+  protect,
+  [
+    body('text').trim().notEmpty().withMessage('Comment text is required')
+  ],
+  async (req, res) => {
+    try {
+      const { text } = req.body;
+      const post = await Post.findById(req.params.postId);
 
-    if (!comment) {
-      return res.status(400).json({
+      if (!post) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found'
+        });
+      }
+
+      post.comments.push({
+        userId: req.user._id,
+        userName: req.user.userName,
+        userProfileImage: req.user.profileImage,
+        text
+      });
+
+      await post.save();
+
+      res.json({
+        success: true,
+        post: post.toClientFormat()
+      });
+    } catch (error) {
+      console.error('Add comment error:', error);
+      res.status(500).json({
         success: false,
-        message: 'Please provide a comment'
+        message: 'Error adding comment'
       });
     }
-
-    const post = await Post.findById(req.params.postId);
-
-    if (!post) {
-      return res.status(404).json({
-        success: false,
-        message: 'Post not found'
-      });
-    }
-
-    const newComment = {
-      userId: req.user._id,
-      userName: req.user.name,
-      userProfileImage: req.user.profileImage,
-      comment,
-      createdAt: new Date()
-    };
-
-    await Post.findByIdAndUpdate(post._id, {
-      $push: { comments: newComment }
-    });
-
-    res.json({
-      success: true,
-      comment: newComment
-    });
-  } catch (error) {
-    console.error('Add comment error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error adding comment'
-    });
   }
-});
+);
 
-// Delete a post
+// Delete post
 router.delete('/:postId', protect, async (req, res) => {
   try {
-    const post = await Post.findById(req.params.postId);
+    const post = await Post.findOne({
+      _id: req.params.postId,
+      userId: req.user._id
+    });
 
     if (!post) {
       return res.status(404).json({
         success: false,
-        message: 'Post not found'
+        message: 'Post not found or unauthorized'
       });
     }
 
-    // Check if user owns the post
-    if (post.userId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to delete this post'
-      });
-    }
-
-    // Delete image from Supabase
-    const fileName = post.postImage.split('/').pop();
-    await supabaseService.deleteImage(process.env.SUPABASE_POST_BUCKET, fileName);
-
-    // Delete post from database
-    await Post.findByIdAndDelete(post._id);
+    await post.remove();
 
     res.json({
       success: true,
@@ -237,53 +203,6 @@ router.delete('/:postId', protect, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error deleting post'
-    });
-  }
-});
-
-// Get feed posts (posts from followed users)
-router.get('/feed', protect, async (req, res) => {
-  try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
-
-    const user = await User.findById(req.user._id);
-    const following = user.following;
-
-    // Get posts from followed users and own posts
-    const posts = await Post.find({
-      $or: [
-        { userId: { $in: following } },
-        { userId: req.user._id }
-      ]
-    })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
-
-    const total = await Post.countDocuments({
-      $or: [
-        { userId: { $in: following } },
-        { userId: req.user._id }
-      ]
-    });
-
-    res.json({
-      success: true,
-      posts,
-      pagination: {
-        current: page,
-        pages: Math.ceil(total / limit),
-        total
-      }
-    });
-  } catch (error) {
-    console.error('Get feed error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching feed'
     });
   }
 });

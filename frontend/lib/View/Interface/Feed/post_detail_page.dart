@@ -3,16 +3,77 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:provider/provider.dart';
-import 'package:social_media/Controller/Services/Database/database_services.dart';
-import 'package:social_media/Model/post_model.dart';
-import 'package:social_media/Utils/Components/comment_sheet.dart';
+import 'package:frontend/Model/post_model.dart';
+import 'package:frontend/services/api_service.dart';
+import 'package:frontend/Utils/Components/comment_sheet.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-class PostDetailPage extends StatelessWidget {
+class PostDetailPage extends StatefulWidget {
   final PostModel post;
 
   const PostDetailPage({super.key, required this.post});
+
+  @override
+  State<PostDetailPage> createState() => _PostDetailPageState();
+}
+
+class _PostDetailPageState extends State<PostDetailPage> {
+  late PostModel _post;
+  final TextEditingController _commentController = TextEditingController();
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _post = widget.post;
+  }
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleLike() async {
+    try {
+      final updatedPost = await ApiService.likePost(_post.postId);
+      setState(() {
+        _post = updatedPost;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error liking post: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _addComment() async {
+    if (_commentController.text.trim().isEmpty) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final updatedPost = await ApiService.commentOnPost(
+        postId: _post.postId,
+        text: _commentController.text.trim(),
+      );
+      setState(() {
+        _post = updatedPost;
+        _commentController.clear();
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error adding comment: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,32 +111,29 @@ class PostDetailPage extends StatelessWidget {
                 children: [
                   ClipOval(
                     child: CachedNetworkImage(
-                      imageUrl:
-                          post.userProfileImage ??
+                      imageUrl: _post.userProfileImage ??
                           'https://via.placeholder.com/150',
                       width: 40,
                       height: 40,
                       fit: BoxFit.cover,
-                      placeholder:
-                          (context, url) => Container(
-                            color: theme.colorScheme.surface,
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  theme.colorScheme.primary,
-                                ),
-                                strokeWidth: 2,
-                              ),
+                      placeholder: (context, url) => Container(
+                        color: theme.colorScheme.surface,
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              theme.colorScheme.primary,
                             ),
+                            strokeWidth: 2,
                           ),
-                      errorWidget:
-                          (context, url, error) => Container(
-                            color: theme.colorScheme.surface,
-                            child: Icon(
-                              Iconsax.user,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        color: theme.colorScheme.surface,
+                        child: Icon(
+                          Iconsax.user,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -84,7 +142,7 @@ class PostDetailPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          post.userName ?? 'Unknown User',
+                          _post.userName,
                           style: GoogleFonts.poppins(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -92,12 +150,11 @@ class PostDetailPage extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          _formatTimestamp(post.createdAt ?? DateTime.now()),
+                          _formatTimestamp(_post.createdAt),
                           style: GoogleFonts.poppins(
                             fontSize: 12,
-                            color: theme.colorScheme.onBackground.withOpacity(
-                              0.6,
-                            ),
+                            color:
+                                theme.colorScheme.onBackground.withOpacity(0.6),
                           ),
                         ),
                       ],
@@ -108,248 +165,222 @@ class PostDetailPage extends StatelessWidget {
             ),
 
             // Post Image
-            CachedNetworkImage(
-              imageUrl: post.postImage ?? 'https://via.placeholder.com/150',
-              width: double.infinity,
-              height: size.width,
-              fit: BoxFit.cover,
-              placeholder:
-                  (context, url) => Container(
-                    width: double.infinity,
-                    height: size.width,
-                    color: theme.colorScheme.surface,
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          theme.colorScheme.primary,
-                        ),
-                        strokeWidth: 2,
+            if (_post.postImage != null)
+              CachedNetworkImage(
+                imageUrl: _post.postImage!,
+                width: double.infinity,
+                height: size.width,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => Container(
+                  width: double.infinity,
+                  height: size.width,
+                  color: theme.colorScheme.surface,
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        theme.colorScheme.primary,
                       ),
+                      strokeWidth: 2,
                     ),
                   ),
-              errorWidget:
-                  (context, url, error) => Container(
-                    width: double.infinity,
-                    height: size.width,
-                    color: theme.colorScheme.surface,
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Iconsax.image,
-                            color: theme.colorScheme.primary,
-                            size: 40,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Failed to load image',
-                            style: GoogleFonts.poppins(
-                              color: theme.colorScheme.primary,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-            ),
-
-            // Actions and Caption
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Action Buttons
-                  Row(
-                    children: [
-                      Consumer<DatabaseServices>(
-                        builder: (context, databaseProvider, child) {
-                          return IconButton(
-                            onPressed:
-                                () => databaseProvider.toggleLike(post.postId!),
-                            icon: Icon(
-                              databaseProvider.hasUserLikedPost(post.likedBy)
-                                  ? Iconsax.heart5
-                                  : Iconsax.heart,
-                              color:
-                                  databaseProvider.hasUserLikedPost(
-                                        post.likedBy,
-                                      )
-                                      ? Colors.red
-                                      : theme.iconTheme.color,
-                              size: 26,
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 4),
-                      IconButton(
-                        onPressed: () {
-                          showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            builder:
-                                (context) => CommentSheet(
-                                  postId: post.postId!,
-                                  comments: post.comments ?? [],
-                                ),
-                          );
-                        },
-                        icon: Icon(
-                          Iconsax.message,
-                          size: 24,
-                          color: theme.iconTheme.color,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      IconButton(
-                        onPressed: () {},
-                        icon: Icon(
-                          Iconsax.send_2,
-                          size: 24,
-                          color: theme.iconTheme.color,
-                        ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        onPressed: () {},
-                        icon: Icon(
-                          Iconsax.bookmark,
-                          size: 24,
-                          color: theme.iconTheme.color,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // Like Count
-                  if (post.likeCount != null && post.likeCount! > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8, bottom: 8),
-                      child: Text(
-                        '${post.likeCount} ${post.likeCount == 1 ? 'like' : 'likes'}',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onBackground,
-                        ),
-                      ),
-                    ),
-
-                  // Caption
-                  RichText(
-                    text: TextSpan(
-                      style: GoogleFonts.poppins(
-                        color: theme.colorScheme.onBackground,
-                        fontSize: 14,
-                      ),
+                ),
+                errorWidget: (context, url, error) => Container(
+                  width: double.infinity,
+                  height: size.width,
+                  color: theme.colorScheme.surface,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        TextSpan(
-                          text: "${post.userName} ",
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        Icon(
+                          Iconsax.image,
+                          color: theme.colorScheme.primary,
+                          size: 40,
                         ),
-                        TextSpan(text: post.caption ?? ''),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Failed to load image',
+                          style: GoogleFonts.poppins(
+                            color: theme.colorScheme.primary,
+                            fontSize: 14,
+                          ),
+                        ),
                       ],
                     ),
                   ),
+                ),
+              ),
 
-                  const SizedBox(height: 16),
-
-                  // Comments Section
-                  if (post.comments != null && post.comments!.isNotEmpty) ...[
-                    Text(
-                      'Comments',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: theme.colorScheme.onBackground,
-                      ),
+            // Actions
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: _handleLike,
+                    icon: Icon(
+                      _post.likedBy.contains(_getCurrentUserId())
+                          ? Iconsax.heart5
+                          : Iconsax.heart,
+                      color: _post.likedBy.contains(_getCurrentUserId())
+                          ? Colors.red
+                          : theme.iconTheme.color,
+                      size: 26,
                     ),
-                    const SizedBox(height: 8),
-                    ...post.comments!.map(
-                      (comment) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ClipOval(
-                              child: CachedNetworkImage(
-                                imageUrl:
-                                    comment['userProfileImage'] ??
-                                    'https://via.placeholder.com/150',
-                                width: 32,
-                                height: 32,
-                                fit: BoxFit.cover,
-                                placeholder:
-                                    (context, url) => Container(
-                                      color: theme.colorScheme.surface,
-                                      child: Center(
-                                        child: CircularProgressIndicator(
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                                theme.colorScheme.primary,
-                                              ),
-                                          strokeWidth: 2,
-                                        ),
-                                      ),
-                                    ),
-                                errorWidget:
-                                    (context, url, error) => Container(
-                                      color: theme.colorScheme.surface,
-                                      child: Icon(
-                                        Iconsax.user,
-                                        color: theme.colorScheme.primary,
-                                        size: 16,
-                                      ),
-                                    ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  RichText(
-                                    text: TextSpan(
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 14,
-                                        color: theme.colorScheme.onBackground,
-                                      ),
-                                      children: [
-                                        TextSpan(
-                                          text: '${comment['userName']} ',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        TextSpan(text: comment['comment']),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    _formatTimestamp(
-                                      DateTime.parse(comment['createdAt']),
-                                    ),
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      color: theme.colorScheme.onBackground
-                                          .withOpacity(0.6),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    onPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        builder: (context) => CommentSheet(
+                          postId: _post.postId,
+                          comments: _post.comments,
+                          onCommentAdded: (text) async {
+                            try {
+                              final updatedPost =
+                                  await ApiService.commentOnPost(
+                                postId: _post.postId,
+                                text: text,
+                              );
+                              setState(() {
+                                _post = updatedPost;
+                              });
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content: Text('Error adding comment: $e')),
+                              );
+                            }
+                          },
                         ),
-                      ),
+                      );
+                    },
+                    icon: Icon(
+                      Iconsax.message,
+                      size: 24,
+                      color: theme.iconTheme.color,
                     ),
-                  ],
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    onPressed: () {},
+                    icon: Icon(
+                      Iconsax.send_2,
+                      size: 24,
+                      color: theme.iconTheme.color,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () {},
+                    icon: Icon(
+                      Iconsax.bookmark,
+                      size: 24,
+                      color: theme.iconTheme.color,
+                    ),
+                  ),
                 ],
               ),
             ),
+
+            // Like Count
+            if (_post.likeCount > 0)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  '${_post.likeCount} ${_post.likeCount == 1 ? 'like' : 'likes'}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onBackground,
+                  ),
+                ),
+              ),
+
+            // Caption
+            if (_post.caption.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: RichText(
+                  text: TextSpan(
+                    style: GoogleFonts.poppins(
+                      color: theme.colorScheme.onBackground,
+                      fontSize: 14,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: "${_post.userName} ",
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      TextSpan(text: _post.caption),
+                    ],
+                  ),
+                ),
+              ),
+
+            // Comments
+            if (_post.comments.isNotEmpty) ...[
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Text(
+                  'Comments',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onBackground,
+                  ),
+                ),
+              ),
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: _post.comments.length,
+                itemBuilder: (context, index) {
+                  final comment = _post.comments[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CircleAvatar(
+                          radius: 16,
+                          backgroundImage: comment.userProfileImage != null
+                              ? NetworkImage(comment.userProfileImage!)
+                              : null,
+                          child: comment.userProfileImage == null
+                              ? const Icon(Icons.person)
+                              : null,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                comment.userName,
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                comment.text,
+                                style: GoogleFonts.poppins(fontSize: 14),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
           ],
         ),
       ),
@@ -369,6 +400,7 @@ class PostDetailPage extends StatelessWidget {
           children: [
             Expanded(
               child: TextField(
+                controller: _commentController,
                 decoration: InputDecoration(
                   hintText: 'Add a comment...',
                   hintStyle: GoogleFonts.poppins(
@@ -384,21 +416,36 @@ class PostDetailPage extends StatelessWidget {
                     horizontal: 16,
                     vertical: 8,
                   ),
+                  suffixIcon: _isLoading
+                      ? Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              theme.colorScheme.primary,
+                            ),
+                          ),
+                        )
+                      : IconButton(
+                          onPressed: _addComment,
+                          icon: Icon(
+                            Icons.send,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
                 ),
-                onSubmitted: (comment) {
-                  if (comment.trim().isNotEmpty) {
-                    context.read<DatabaseServices>().addComment(
-                      post.postId!,
-                      comment.trim(),
-                    );
-                  }
-                },
+                onSubmitted: (_) => _addComment(),
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  String? _getCurrentUserId() {
+    // TODO: Implement getting current user ID from shared preferences or state management
+    return null;
   }
 
   String _formatTimestamp(DateTime dateTime) {

@@ -1,10 +1,10 @@
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously
 
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
-
-import 'package:social_media/Controller/input_controllers.dart';
-import 'package:social_media/Controller/Services/Authentication/auth_services.dart';
-import 'package:provider/provider.dart';
+import 'package:frontend/Controller/input_controllers.dart';
+import 'package:frontend/services/api_service.dart';
+import 'package:image_picker/image_picker.dart';
 
 class SignUp extends StatefulWidget {
   const SignUp({super.key});
@@ -28,6 +28,8 @@ class _SignUpState extends State<SignUp> with TickerProviderStateMixin {
   bool _privacyPolicyRead = false;
   int _currentStep = 0;
   late TabController _tabController;
+  Uint8List? _profileImage;
+  bool _isLoading = false;
 
   // Animation controllers
   late AnimationController _animationController;
@@ -73,44 +75,112 @@ class _SignUpState extends State<SignUp> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  // Show image source selection dialog
-  void _showImageSourceDialog() {
-    final authService = Provider.of<AuthServices>(context, listen: false);
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
 
+      if (pickedFile != null) {
+        final imageBytes = await pickedFile.readAsBytes();
+        setState(() {
+          _profileImage = imageBytes;
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error picking image: $e')),
+      );
+    }
+  }
+
+  void _showImageSourceDialog() {
     showDialog(
       context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: const Text('Choose Image Source'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.camera_alt),
-                  title: const Text('Take a picture'),
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    authService.takeProfilePicture();
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.photo_library),
-                  title: const Text('Choose from gallery'),
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    authService.pickProfileImageFromGallery();
-                  },
-                ),
-              ],
+      builder: (ctx) => AlertDialog(
+        title: const Text('Choose Image Source'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Take a picture'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _pickImage(ImageSource.camera);
+              },
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Cancel'),
-              ),
-            ],
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Choose from gallery'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
           ),
+        ],
+      ),
     );
+  }
+
+  Future<void> _handleSignUp() async {
+    if (!_profileFormKey.currentState!.validate() ||
+        !_accountFormKey.currentState!.validate()) {
+      return;
+    }
+
+    if (!_agreeToTerms || !_privacyPolicyRead) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please agree to the Terms and Privacy Policy'),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final response = await ApiService.register(
+        name: _inputControllers.nameController.text.trim(),
+        email: _inputControllers.emailController.text.trim(),
+        password: _inputControllers.passwordController.text,
+        userName: _inputControllers.usernameController.text.trim(),
+        age: int.parse(_inputControllers.ageController.text.trim()),
+        phone: _inputControllers.phoneController.text.trim(),
+        profileImage: _profileImage,
+      );
+
+      if (mounted) {
+        // Registration successful, navigate to login
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/login',
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Registration failed: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   void _nextTab() {
@@ -266,56 +336,288 @@ class _SignUpState extends State<SignUp> with TickerProviderStateMixin {
             ),
 
             // Main content
-            Container(
-              padding: const EdgeInsets.only(top: 60),
+            Padding(
+              padding: const EdgeInsets.all(24.0),
               child: Column(
                 children: [
-                  // Header
-                  FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Column(
-                      children: [
-                        Text(
-                          'Create Account',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: colorScheme.primary,
-                            letterSpacing: 0.5,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 30),
-
                   // Progress indicator
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 30.0),
-                    child: Row(
-                      children: [
-                        _buildStepIndicator(0, "Profile"),
-                        _buildStepConnector(),
-                        _buildStepIndicator(1, "Account"),
-                        _buildStepConnector(),
-                        _buildStepIndicator(2, "Privacy"),
-                      ],
+                  LinearProgressIndicator(
+                    value: (_currentStep + 1) / 3,
+                    backgroundColor: colorScheme.primary.withOpacity(0.1),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      colorScheme.secondary,
                     ),
                   ),
+                  const SizedBox(height: 24),
 
-                  const SizedBox(height: 20),
+                  // Tab bar
+                  TabBar(
+                    controller: _tabController,
+                    indicatorColor: colorScheme.secondary,
+                    labelColor: colorScheme.secondary,
+                    unselectedLabelColor: colorScheme.primary.withOpacity(0.5),
+                    tabs: const [
+                      Tab(text: 'Profile'),
+                      Tab(text: 'Account'),
+                      Tab(text: 'Review'),
+                    ],
+                  ),
 
-                  // Tabbed content
+                  // Tab views
                   Expanded(
                     child: TabBarView(
                       controller: _tabController,
                       physics: const NeverScrollableScrollPhysics(),
                       children: [
-                        _buildProfileTab(colorScheme),
-                        _buildAccountTab(colorScheme),
-                        _buildPrivacyPolicyTab(colorScheme),
+                        // Profile information form
+                        SingleChildScrollView(
+                          child: Form(
+                            key: _profileFormKey,
+                            child: Column(
+                              children: [
+                                const SizedBox(height: 24),
+                                // Profile image picker
+                                GestureDetector(
+                                  onTap: _showImageSourceDialog,
+                                  child: CircleAvatar(
+                                    radius: 50,
+                                    backgroundColor:
+                                        colorScheme.primary.withOpacity(0.1),
+                                    backgroundImage: _profileImage != null
+                                        ? MemoryImage(_profileImage!)
+                                        : null,
+                                    child: _profileImage == null
+                                        ? Icon(
+                                            Icons.add_a_photo,
+                                            color: colorScheme.primary,
+                                            size: 32,
+                                          )
+                                        : null,
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                // Name field
+                                TextFormField(
+                                  controller: _inputControllers.nameController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Full Name',
+                                    prefixIcon: Icon(
+                                      Icons.person_outline,
+                                      color: colorScheme.secondary,
+                                    ),
+                                  ),
+                                  validator: (value) =>
+                                      _requiredFieldValidator(value, 'name'),
+                                ),
+                                const SizedBox(height: 16),
+                                // Username field
+                                TextFormField(
+                                  controller:
+                                      _inputControllers.usernameController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Username',
+                                    prefixIcon: Icon(
+                                      Icons.alternate_email,
+                                      color: colorScheme.secondary,
+                                    ),
+                                  ),
+                                  validator: _validateUsername,
+                                ),
+                                const SizedBox(height: 16),
+                                // Age field
+                                TextFormField(
+                                  controller: _inputControllers.ageController,
+                                  keyboardType: TextInputType.number,
+                                  decoration: InputDecoration(
+                                    labelText: 'Age',
+                                    prefixIcon: Icon(
+                                      Icons.cake_outlined,
+                                      color: colorScheme.secondary,
+                                    ),
+                                  ),
+                                  validator: _validateAge,
+                                ),
+                                const SizedBox(height: 16),
+                                // Phone field
+                                TextFormField(
+                                  controller: _inputControllers.phoneController,
+                                  keyboardType: TextInputType.phone,
+                                  decoration: InputDecoration(
+                                    labelText: 'Phone Number',
+                                    prefixIcon: Icon(
+                                      Icons.phone_outlined,
+                                      color: colorScheme.secondary,
+                                    ),
+                                  ),
+                                  validator: _validatePhone,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // Account information form
+                        SingleChildScrollView(
+                          child: Form(
+                            key: _accountFormKey,
+                            child: Column(
+                              children: [
+                                const SizedBox(height: 24),
+                                // Email field
+                                TextFormField(
+                                  controller: _inputControllers.emailController,
+                                  keyboardType: TextInputType.emailAddress,
+                                  decoration: InputDecoration(
+                                    labelText: 'Email',
+                                    prefixIcon: Icon(
+                                      Icons.email_outlined,
+                                      color: colorScheme.secondary,
+                                    ),
+                                  ),
+                                  validator: _validateEmail,
+                                ),
+                                const SizedBox(height: 16),
+                                // Password field
+                                TextFormField(
+                                  controller:
+                                      _inputControllers.passwordController,
+                                  obscureText: _obscurePassword,
+                                  decoration: InputDecoration(
+                                    labelText: 'Password',
+                                    prefixIcon: Icon(
+                                      Icons.lock_outline,
+                                      color: colorScheme.secondary,
+                                    ),
+                                    suffixIcon: IconButton(
+                                      icon: Icon(
+                                        _obscurePassword
+                                            ? Icons.visibility_off
+                                            : Icons.visibility,
+                                      ),
+                                      onPressed: () {
+                                        setState(() {
+                                          _obscurePassword = !_obscurePassword;
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                  validator: _validatePassword,
+                                ),
+                                const SizedBox(height: 16),
+                                // Confirm password field
+                                TextFormField(
+                                  controller: _inputControllers
+                                      .confirmPasswordController,
+                                  obscureText: _obscureConfirmPassword,
+                                  decoration: InputDecoration(
+                                    labelText: 'Confirm Password',
+                                    prefixIcon: Icon(
+                                      Icons.lock_outline,
+                                      color: colorScheme.secondary,
+                                    ),
+                                    suffixIcon: IconButton(
+                                      icon: Icon(
+                                        _obscureConfirmPassword
+                                            ? Icons.visibility_off
+                                            : Icons.visibility,
+                                      ),
+                                      onPressed: () {
+                                        setState(() {
+                                          _obscureConfirmPassword =
+                                              !_obscureConfirmPassword;
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                  validator: _validateConfirmPassword,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // Review and submit
+                        SingleChildScrollView(
+                          child: Column(
+                            children: [
+                              const SizedBox(height: 24),
+                              // Terms and conditions
+                              CheckboxListTile(
+                                value: _agreeToTerms,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _agreeToTerms = value ?? false;
+                                  });
+                                },
+                                title: const Text(
+                                  'I agree to the Terms of Service',
+                                ),
+                                controlAffinity:
+                                    ListTileControlAffinity.leading,
+                              ),
+                              // Privacy policy
+                              CheckboxListTile(
+                                value: _privacyPolicyRead,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _privacyPolicyRead = value ?? false;
+                                  });
+                                },
+                                title: const Text(
+                                  'I have read the Privacy Policy',
+                                ),
+                                controlAffinity:
+                                    ListTileControlAffinity.leading,
+                              ),
+                              const SizedBox(height: 32),
+                              // Submit button
+                              ElevatedButton(
+                                onPressed: _isLoading ? null : _handleSignUp,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: colorScheme.secondary,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 48,
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
+                                ),
+                                child: _isLoading
+                                    ? const CircularProgressIndicator()
+                                    : const Text(
+                                        'Create Account',
+                                        style: TextStyle(fontSize: 16),
+                                      ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Navigation buttons
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        if (_currentStep > 0)
+                          TextButton(
+                            onPressed: _previousTab,
+                            child: const Text('Previous'),
+                          )
+                        else
+                          const SizedBox.shrink(),
+                        if (_currentStep < 2)
+                          ElevatedButton(
+                            onPressed: _nextTab,
+                            child: const Text('Next'),
+                          )
+                        else
+                          const SizedBox.shrink(),
                       ],
                     ),
                   ),
@@ -327,739 +629,4 @@ class _SignUpState extends State<SignUp> with TickerProviderStateMixin {
       ),
     );
   }
-
-  Widget _buildStepIndicator(int step, String label) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final isActive = step == _currentStep;
-    final isCompleted = step < _currentStep;
-
-    return Expanded(
-      child: Column(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color:
-                  isActive || isCompleted
-                      ? colorScheme.secondary
-                      : colorScheme.primary.withOpacity(0.1),
-              shape: BoxShape.circle,
-              boxShadow:
-                  isActive
-                      ? [
-                        BoxShadow(
-                          color: colorScheme.secondary.withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ]
-                      : null,
-            ),
-            child: Center(
-              child:
-                  isCompleted
-                      ? Icon(Icons.check, color: Colors.white, size: 20)
-                      : Text(
-                        '${step + 1}',
-                        style: TextStyle(
-                          color: isActive ? Colors.white : colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: TextStyle(
-              color:
-                  isActive
-                      ? colorScheme.secondary
-                      : colorScheme.primary.withOpacity(0.7),
-              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStepConnector() {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      width: 40,
-      height: 3,
-      color: colorScheme.primary.withOpacity(0.1),
-    );
-  }
-
-  Widget _buildProfileTab(ColorScheme colorScheme) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Form(
-        key: _profileFormKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 10),
-            Text(
-              'Tell us about yourself',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: colorScheme.primary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-
-            // Profile photo
-            Center(
-              child: Stack(
-                children: [
-                  Consumer<AuthServices>(
-                    builder:
-                        (context, authService, _) => GestureDetector(
-                          onTap: _showImageSourceDialog,
-                          child: Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                              color: colorScheme.primary.withOpacity(0.1),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: colorScheme.secondary.withOpacity(0.5),
-                                width: 2,
-                              ),
-                              image:
-                                  authService.profileImage != null
-                                      ? DecorationImage(
-                                        image: FileImage(
-                                          authService.profileImage!,
-                                        ),
-                                        fit: BoxFit.cover,
-                                      )
-                                      : null,
-                            ),
-                            child:
-                                authService.profileImage == null
-                                    ? const Icon(
-                                      Icons.person,
-                                      size: 60,
-                                      color: Colors.white,
-                                    )
-                                    : null,
-                          ),
-                        ),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: colorScheme.secondary,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.camera_alt,
-                        size: 20,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Optional text
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                'Optional: You can add a photo now or later',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: colorScheme.primary.withOpacity(0.6),
-                  fontStyle: FontStyle.italic,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Full Name
-            _buildTextField(
-              controller: _inputControllers.nameController,
-              label: 'Full Name',
-              hint: 'Enter your full name',
-              icon: Icons.person_outline,
-              keyboardType: TextInputType.name,
-              validator: (value) => _requiredFieldValidator(value, 'full name'),
-            ),
-            const SizedBox(height: 16),
-
-            // Username
-            _buildTextField(
-              controller: _inputControllers.usernameController,
-              label: 'Username',
-              hint: 'Choose a unique username',
-              icon: Icons.alternate_email,
-              keyboardType: TextInputType.text,
-              validator: _validateUsername,
-            ),
-            const SizedBox(height: 16),
-
-            // Age
-            _buildTextField(
-              controller: _inputControllers.ageController,
-              label: 'Age',
-              hint: 'Enter your age',
-              icon: Icons.cake_outlined,
-              keyboardType: TextInputType.number,
-              validator: _validateAge,
-            ),
-            const SizedBox(height: 40),
-
-            // Next button
-            _buildActionButton(
-              label: 'NEXT',
-              onPressed: _nextTab,
-              icon: Icons.arrow_forward,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAccountTab(ColorScheme colorScheme) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Form(
-        key: _accountFormKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 10),
-            Text(
-              'Set up your account',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: colorScheme.primary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 30),
-
-            // Email
-            _buildTextField(
-              controller: _inputControllers.emailController,
-              label: 'Email Address',
-              hint: 'Enter your email',
-              icon: Icons.email_outlined,
-              keyboardType: TextInputType.emailAddress,
-              validator: _validateEmail,
-            ),
-            const SizedBox(height: 16),
-
-            // Phone
-            _buildTextField(
-              controller: _inputControllers.phoneController,
-              label: 'Phone Number',
-              hint: 'Enter your phone number',
-              icon: Icons.phone_outlined,
-              keyboardType: TextInputType.phone,
-              validator: _validatePhone,
-            ),
-            const SizedBox(height: 16),
-
-            // Password
-            _buildTextField(
-              controller: _inputControllers.passwordController,
-              label: 'Password',
-              hint: 'Create a strong password',
-              icon: Icons.lock_outline,
-              isPassword: true,
-              obscureText: _obscurePassword,
-              validator: _validatePassword,
-              onTogglePassword: () {
-                setState(() {
-                  _obscurePassword = !_obscurePassword;
-                });
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Confirm Password
-            _buildTextField(
-              controller: _inputControllers.confirmPasswordController,
-              label: 'Confirm Password',
-              hint: 'Confirm your password',
-              icon: Icons.lock_outline,
-              isPassword: true,
-              obscureText: _obscureConfirmPassword,
-              validator: _validateConfirmPassword,
-              onTogglePassword: () {
-                setState(() {
-                  _obscureConfirmPassword = !_obscureConfirmPassword;
-                });
-              },
-            ),
-            const SizedBox(height: 40),
-
-            // Navigation buttons
-            Row(
-              children: [
-                Expanded(
-                  child: _buildActionButton(
-                    label: 'BACK',
-                    onPressed: _previousTab,
-                    icon: Icons.arrow_back,
-                    isOutlined: true,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildActionButton(
-                    label: 'NEXT',
-                    onPressed: _nextTab,
-                    icon: Icons.arrow_forward,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPrivacyPolicyTab(ColorScheme colorScheme) {
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'Privacy Policy & Terms',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: colorScheme.primary,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-
-          // Privacy policy content
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: colorScheme.primary.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    Text(
-                      'Privacy Policy',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: colorScheme.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _privacyPolicyText,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: colorScheme.primary.withOpacity(0.7),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      'Terms of Service',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: colorScheme.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _termsOfServiceText,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: colorScheme.primary.withOpacity(0.7),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // Checkboxes
-          Row(
-            children: [
-              Checkbox(
-                value: _privacyPolicyRead,
-                activeColor: colorScheme.secondary,
-                onChanged: (value) {
-                  setState(() {
-                    _privacyPolicyRead = value ?? false;
-                  });
-                },
-              ),
-              Expanded(
-                child: Text(
-                  'I have read the Privacy Policy',
-                  style: TextStyle(fontSize: 14, color: colorScheme.primary),
-                ),
-              ),
-            ],
-          ),
-          Row(
-            children: [
-              Checkbox(
-                value: _agreeToTerms,
-                activeColor: colorScheme.secondary,
-                onChanged: (value) {
-                  setState(() {
-                    _agreeToTerms = value ?? false;
-                  });
-                },
-              ),
-              Expanded(
-                child: Text(
-                  'I agree to the Terms of Service and Privacy Policy',
-                  style: TextStyle(fontSize: 14, color: colorScheme.primary),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 30),
-
-          // Navigation buttons
-          Row(
-            children: [
-              Expanded(
-                child: _buildActionButton(
-                  label: 'BACK',
-                  onPressed: _previousTab,
-                  icon: Icons.arrow_back,
-                  isOutlined: true,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildActionButton(
-                  label: 'REGISTER',
-                  onPressed:
-                      _agreeToTerms && _privacyPolicyRead
-                          ? _handleRegistration
-                          : null,
-                  icon: Icons.check_circle_outline,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // Sign in option
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Already have an account?',
-                style: TextStyle(color: colorScheme.primary.withOpacity(0.7)),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(
-                  'Sign In',
-                  style: TextStyle(
-                    color: colorScheme.secondary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required IconData icon,
-    TextInputType keyboardType = TextInputType.text,
-    bool isPassword = false,
-    bool obscureText = false,
-    String? Function(String?)? validator,
-    VoidCallback? onTogglePassword,
-  }) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            color: colorScheme.primary.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: TextFormField(
-        controller: controller,
-        obscureText: isPassword ? obscureText : false,
-        keyboardType: keyboardType,
-        validator: validator,
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          floatingLabelBehavior: FloatingLabelBehavior.never,
-          filled: true,
-          fillColor: colorScheme.surface,
-          errorMaxLines: 2,
-          prefixIcon: Icon(icon, color: colorScheme.secondary),
-          suffixIcon:
-              isPassword
-                  ? IconButton(
-                    icon: Icon(
-                      obscureText ? Icons.visibility_off : Icons.visibility,
-                      color: colorScheme.primary.withOpacity(0.7),
-                    ),
-                    onPressed: onTogglePassword,
-                  )
-                  : null,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: colorScheme.secondary, width: 1.5),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: Colors.red.shade400, width: 1.5),
-          ),
-          focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: Colors.red.shade400, width: 1.5),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButton({
-    required String label,
-    required VoidCallback? onPressed,
-    required IconData icon,
-    bool isOutlined = false,
-  }) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      height: 50,
-      decoration:
-          isOutlined
-              ? null
-              : BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: colorScheme.secondary.withOpacity(0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor:
-              isOutlined ? Colors.transparent : colorScheme.secondary,
-          foregroundColor: isOutlined ? colorScheme.secondary : Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side:
-                isOutlined
-                    ? BorderSide(color: colorScheme.secondary, width: 1.5)
-                    : BorderSide.none,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (isOutlined && icon == Icons.arrow_back) Icon(icon, size: 18),
-            if (isOutlined && icon == Icons.arrow_back)
-              const SizedBox(width: 8),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-              ),
-            ),
-            if (!isOutlined || icon != Icons.arrow_back)
-              const SizedBox(width: 8),
-            if (!isOutlined || icon != Icons.arrow_back) Icon(icon, size: 18),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Handle registration process
-  void _handleRegistration() async {
-    final authService = Provider.of<AuthServices>(context, listen: false);
-
-    try {
-      // Show loading indicator
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => const Center(child: CircularProgressIndicator()),
-      );
-
-      // Call the registration method from AuthServices
-      final success = await authService.registerUser(
-        name: _inputControllers.nameController.text,
-        username: _inputControllers.usernameController.text,
-        email: _inputControllers.emailController.text,
-        password: _inputControllers.passwordController.text,
-        age: _inputControllers.ageController.text,
-        phone: _inputControllers.phoneController.text,
-      );
-
-      // Close loading indicator
-      Navigator.of(context).pop();
-
-      if (success) {
-        // Show success dialog
-        showDialog(
-          context: context,
-          builder:
-              (ctx) => AlertDialog(
-                title: const Text('Registration Successful'),
-                content: const Text(
-                  'Your account has been created successfully! You can now log in with your credentials.',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(ctx).pop();
-                      Navigator.of(context).pop(); // Go back to login screen
-                    },
-                    child: const Text('OK'),
-                  ),
-                ],
-              ),
-        );
-      } else {
-        // Show error dialog
-        showDialog(
-          context: context,
-          builder:
-              (ctx) => AlertDialog(
-                title: const Text('Registration Failed'),
-                content: const Text(
-                  'There was a problem creating your account. Please try again.',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    child: const Text('OK'),
-                  ),
-                ],
-              ),
-        );
-      }
-    } catch (e) {
-      // Close loading indicator if open
-      Navigator.of(context, rootNavigator: true).pop();
-
-      // Show error dialog
-      showDialog(
-        context: context,
-        builder:
-            (ctx) => AlertDialog(
-              title: const Text('Error'),
-              content: Text('An unexpected error occurred: $e'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text('OK'),
-                ),
-              ],
-            ),
-      );
-    }
-  }
-
-  final String _privacyPolicyText = '''
-Our app is committed to protecting your privacy. We collect personal information such as your name, email address, and demographic information to provide you with a personalized experience.
-
-We use this information to:
-• Create and manage your account
-• Provide you with personalized content and recommendations
-• Improve our services and develop new features
-• Communicate with you about updates and new features
-
-We may share your information with third-party service providers who assist us in operating our app, conducting our business, or serving you. These providers have access to your personal information only to perform specific tasks on our behalf and are obligated to maintain its confidentiality.
-
-We implement a variety of security measures to maintain the safety of your personal information. However, no method of transmission over the Internet or method of electronic storage is 100% secure.
-
-You have the right to access, update, or delete your personal information at any time through your account settings.
-
-By using our app, you consent to our privacy policy and agree to its terms.
-''';
-
-  final String _termsOfServiceText = '''
-By accessing or using our app, you agree to be bound by these Terms of Service. If you disagree with any part of the terms, you may not access the app.
-
-CONTENT AND CONDUCT
-• You are responsible for all content you post and activity that occurs under your account.
-• You must not post content that is illegal, offensive, threatening, defamatory, or infringing on intellectual property rights.
-• You must not use the app to engage in any illegal activities or to harass, bully, or harm others.
-
-ACCOUNT TERMINATION
-We reserve the right to terminate or suspend your account and access to the app at our sole discretion, without notice, for conduct that we believe violates these Terms of Service or is harmful to other users, us, or third parties, or for any other reason.
-
-INTELLECTUAL PROPERTY
-The app and all its original content, features, and functionality are owned by us and are protected by international copyright, trademark, patent, trade secret, and other intellectual property laws.
-
-DISCLAIMER OF WARRANTIES
-The app is provided "as is" without warranties of any kind, either express or implied.
-
-LIMITATION OF LIABILITY
-In no event shall we be liable for any indirect, incidental, special, consequential, or punitive damages, including lost profit, lost revenue, or similar damages.
-
-CHANGES TO TERMS
-We reserve the right to modify or replace these terms at any time. It is your responsibility to check the terms periodically for changes.
-''';
 }

@@ -10,11 +10,8 @@ const commentSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  userProfileImage: {
-    type: String,
-    required: true
-  },
-  comment: {
+  userProfileImage: String,
+  text: {
     type: String,
     required: true
   },
@@ -38,18 +35,9 @@ const postSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  userProfileImage: {
-    type: String,
-    required: true
-  },
-  caption: {
-    type: String,
-    required: true
-  },
-  postImage: {
-    type: String,
-    required: true
-  },
+  userProfileImage: String,
+  caption: String,
+  postImage: String,
   likeCount: {
     type: Number,
     default: 0
@@ -62,6 +50,29 @@ const postSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// Convert to frontend format
+postSchema.methods.toClientFormat = function() {
+  return {
+    postId: this._id,
+    userEmail: this.userEmail,
+    userId: this.userId,
+    userName: this.userName,
+    userProfileImage: this.userProfileImage,
+    caption: this.caption,
+    postImage: this.postImage,
+    likeCount: this.likeCount,
+    likedBy: this.likedBy.map(id => id.toString()),
+    comments: this.comments.map(comment => ({
+      userId: comment.userId.toString(),
+      userName: comment.userName,
+      userProfileImage: comment.userProfileImage,
+      text: comment.text,
+      createdAt: comment.createdAt
+    })),
+    createdAt: this.createdAt
+  };
+};
 
 // Add indexes for better query performance
 postSchema.index({ userId: 1, createdAt: -1 });

@@ -1,21 +1,16 @@
 const { createClient } = require('@supabase/supabase-js');
 
-let supabase = null;
+const SUPABASE_URL = "https://xwckseuzeucwapvqrqqs.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh3Y2tzZXV6ZXVjd2FwdnFycXFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyNTg0NDgsImV4cCI6MjA2MjgzNDQ0OH0.F-iEs5dpWLK8gsJfSJ4RRB29HYlggCmkK1-2bzrDJgw";
 
-// Initialize Supabase client if credentials are available
-if (process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
-  supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_KEY
-  );
-}
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const BUCKET_NAMES = {
+  USER_IMAGES: 'user-images',
+  POST_IMAGES: 'post-images'
+};
 
 const ensureBucketExists = async (bucketName) => {
-  if (!supabase) {
-    console.log('Supabase not configured, skipping bucket creation');
-    return;
-  }
-
   try {
     const { data: bucket } = await supabase.storage.getBucket(bucketName);
     
@@ -32,18 +27,13 @@ const ensureBucketExists = async (bucketName) => {
 };
 
 const uploadUserImage = async (file, userName) => {
-  if (!supabase) {
-    console.log('Supabase not configured, skipping image upload');
-    return '';
-  }
-
   try {
     const timestamp = Date.now();
     const fileExt = file.originalname.split('.').pop();
     const fileName = `${userName}-${timestamp}.${fileExt}`;
 
     const { data, error } = await supabase.storage
-      .from(process.env.SUPABASE_USER_BUCKET)
+      .from(BUCKET_NAMES.USER_IMAGES)
       .upload(fileName, file.buffer, {
         contentType: file.mimetype,
         upsert: true
@@ -52,7 +42,7 @@ const uploadUserImage = async (file, userName) => {
     if (error) throw error;
 
     const { data: publicUrl } = supabase.storage
-      .from(process.env.SUPABASE_USER_BUCKET)
+      .from(BUCKET_NAMES.USER_IMAGES)
       .getPublicUrl(fileName);
 
     return publicUrl.publicUrl;
@@ -62,55 +52,50 @@ const uploadUserImage = async (file, userName) => {
   }
 };
 
-class SupabaseService {
-  constructor() {
-    this.userBucket = process.env.SUPABASE_USER_BUCKET;
-    this.postBucket = process.env.SUPABASE_POST_BUCKET;
+const uploadPostImage = async (file, userId) => {
+  try {
+    const timestamp = Date.now();
+    const fileExt = file.originalname.split('.').pop();
+    const fileName = `post-${userId}-${timestamp}.${fileExt}`;
+
+    const { data, error } = await supabase.storage
+      .from(BUCKET_NAMES.POST_IMAGES)
+      .upload(fileName, file.buffer, {
+        contentType: file.mimetype,
+        upsert: true
+      });
+
+    if (error) throw error;
+
+    const { data: publicUrl } = supabase.storage
+      .from(BUCKET_NAMES.POST_IMAGES)
+      .getPublicUrl(fileName);
+
+    return publicUrl.publicUrl;
+  } catch (error) {
+    console.error('Error uploading post image:', error);
+    return '';
   }
+};
 
-  async uploadPostImage(file, userId) {
-    try {
-      const timestamp = Date.now();
-      const fileName = `post_${userId}_${timestamp}.jpg`;
+const deleteImage = async (bucketName, fileName) => {
+  try {
+    const { data, error } = await supabase.storage
+      .from(bucketName)
+      .remove([fileName]);
 
-      const { data, error } = await supabase.storage
-        .from(this.postBucket)
-        .upload(fileName, file.buffer, {
-          contentType: 'image/jpeg',
-          cacheControl: '3600',
-          upsert: true
-        });
-
-      if (error) throw error;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from(this.postBucket)
-        .getPublicUrl(fileName);
-
-      return publicUrl;
-    } catch (error) {
-      console.error('Error uploading post image:', error);
-      throw error;
-    }
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error deleting image:', error);
+    return false;
   }
-
-  async deleteImage(bucket, fileName) {
-    try {
-      const { data, error } = await supabase.storage
-        .from(bucket)
-        .remove([fileName]);
-
-      if (error) throw error;
-      return true;
-    } catch (error) {
-      console.error('Error deleting image:', error);
-      throw error;
-    }
-  }
-}
+};
 
 module.exports = {
+  BUCKET_NAMES,
   ensureBucketExists,
   uploadUserImage,
-  SupabaseService
+  uploadPostImage,
+  deleteImage
 }; 

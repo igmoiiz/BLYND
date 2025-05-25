@@ -1,8 +1,9 @@
 import 'dart:async';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:social_media/View/Interface/home_page.dart';
-import 'package:social_media/View/welcome_screen.dart';
+import 'package:frontend/View/Interface/home_page.dart';
+import 'package:frontend/View/welcome_screen.dart';
+import 'package:frontend/services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -40,21 +41,39 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _navigateToNextScreen() async {
-    // Check if user is logged in
-    User? user = FirebaseAuth.instance.currentUser;
+    try {
+      // Check if token exists in shared preferences
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
 
-    if (user != null) {
-      // User is already logged in, navigate to home screen
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => HomePage()),
-      );
-    } else {
-      // User is not logged in, navigate to welcome page
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => WelcomePage()),
-      );
+      if (token != null) {
+        // Set the token in ApiService
+        ApiService.setToken(token);
+
+        // Navigate to home screen
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const HomePage()),
+          );
+        }
+      } else {
+        // No token found, navigate to welcome page
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const WelcomePage()),
+          );
+        }
+      }
+    } catch (e) {
+      // In case of any error, navigate to welcome page
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const WelcomePage()),
+        );
+      }
     }
   }
 
@@ -72,18 +91,17 @@ class _SplashScreenState extends State<SplashScreen>
       body: Center(
         child: FadeTransition(
           opacity: _fadeAnimation,
-          child:
-              Theme.of(context).brightness == Brightness.light
-                  ? Image.asset(
-                    'assets/icons/icon_blynd_light.png',
-                    height: size.height * 0.4,
-                    width: size.width * 0.6,
-                  )
-                  : Image.asset(
-                    'assets/icons/icon_blynd_dark.png',
-                    height: size.height * 0.4,
-                    width: size.width * 0.6,
-                  ),
+          child: Theme.of(context).brightness == Brightness.light
+              ? Image.asset(
+                  'assets/icons/icon_blynd_light.png',
+                  height: size.height * 0.4,
+                  width: size.width * 0.6,
+                )
+              : Image.asset(
+                  'assets/icons/icon_blynd_dark.png',
+                  height: size.height * 0.4,
+                  width: size.width * 0.6,
+                ),
         ),
       ),
     );

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:social_media/Utils/size.dart';
+import 'package:frontend/Utils/size.dart';
 
 class CustomButton extends StatelessWidget {
   final String text;
@@ -24,17 +24,16 @@ class CustomButton extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
       child: Center(
-        child:
-            isLoading
-                ? CircularProgressIndicator(color: color.primary)
-                : Text(
-                  text,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: .5,
-                    fontSize: screenHeight(context) * .018,
-                  ),
+        child: isLoading
+            ? CircularProgressIndicator(color: color.primary)
+            : Text(
+                text,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: .5,
+                  fontSize: screenHeight(context) * .018,
                 ),
+              ),
       ),
     );
   }

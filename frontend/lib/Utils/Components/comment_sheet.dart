@@ -1,13 +1,21 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
+import 'package:frontend/Model/post_model.dart';
+import 'package:frontend/services/api_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class CommentSheet extends StatefulWidget {
   final String postId;
-  final List<Map<String, dynamic>> comments;
+  final List<CommentModel> comments;
+  final Function(String)? onCommentAdded;
 
-  const CommentSheet({super.key, required this.postId, required this.comments});
+  const CommentSheet({
+    super.key,
+    required this.postId,
+    required this.comments,
+    this.onCommentAdded,
+  });
 
   @override
   State<CommentSheet> createState() => _CommentSheetState();
@@ -21,6 +29,37 @@ class _CommentSheetState extends State<CommentSheet> {
   void dispose() {
     _commentController.dispose();
     super.dispose();
+  }
+
+  Future<void> _addComment() async {
+    if (_commentController.text.trim().isEmpty) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await ApiService.commentOnPost(
+        postId: widget.postId,
+        text: _commentController.text.trim(),
+      );
+
+      if (widget.onCommentAdded != null) {
+        widget.onCommentAdded!(_commentController.text.trim());
+      }
+
+      if (mounted) {
+        _commentController.clear();
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error adding comment: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -81,9 +120,12 @@ class _CommentSheetState extends State<CommentSheet> {
                     children: [
                       CircleAvatar(
                         radius: 16,
-                        backgroundImage: NetworkImage(
-                          comment['userProfileImage'] as String,
-                        ),
+                        backgroundImage: comment.userProfileImage != null
+                            ? NetworkImage(comment.userProfileImage!)
+                            : null,
+                        child: comment.userProfileImage == null
+                            ? const Icon(Icons.person)
+                            : null,
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -91,7 +133,7 @@ class _CommentSheetState extends State<CommentSheet> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              comment['userName'] as String,
+                              comment.userName,
                               style: GoogleFonts.poppins(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 14,
@@ -99,7 +141,7 @@ class _CommentSheetState extends State<CommentSheet> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              comment['comment'] as String,
+                              comment.text,
                               style: GoogleFonts.poppins(fontSize: 14),
                             ),
                           ],
@@ -141,32 +183,14 @@ class _CommentSheetState extends State<CommentSheet> {
                 ),
                 const SizedBox(width: 8),
                 IconButton(
-                  onPressed:
-                      _isLoading
-                          ? null
-                          : () async {
-                            if (_commentController.text.trim().isEmpty) return;
-
-                            setState(() => _isLoading = true);
-                            try {
-                              await context.read<DatabaseServices>().addComment(
-                                widget.postId,
-                                _commentController.text,
-                              );
-                              _commentController.clear();
-                              Navigator.pop(context);
-                            } finally {
-                              setState(() => _isLoading = false);
-                            }
-                          },
-                  icon:
-                      _isLoading
-                          ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                          : const Icon(Icons.send),
+                  onPressed: _isLoading ? null : _addComment,
+                  icon: _isLoading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.send),
                 ),
               ],
             ),
