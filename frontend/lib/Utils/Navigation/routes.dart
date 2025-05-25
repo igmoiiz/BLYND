@@ -17,7 +17,7 @@ class Routes {
       case '/login':
         return CupertinoPageRoute(builder: (context) => const LoginPage());
       case '/sign_up':
-        return CupertinoPageRoute(builder: (context) => const SignUp());
+        return CupertinoPageRoute(builder: (context) => const RegisterPage());
       case '/home':
         return CupertinoPageRoute(builder: (context) => const HomePage());
       case '/interface':

@@ -5,25 +5,69 @@ import 'package:flutter/material.dart';
 import 'package:frontend/Controller/input_controllers.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-class SignUp extends StatefulWidget {
-  const SignUp({super.key});
+class RegisterPage extends StatefulWidget {
+  const RegisterPage({super.key});
 
   @override
-  State<SignUp> createState() => _SignUpState();
+  State<RegisterPage> createState() => _RegisterPageState();
 }
 
-class _SignUpState extends State<SignUp> {
-  final _formKey = GlobalKey<FormState>();
+class _RegisterPageState extends State<RegisterPage>
+    with TickerProviderStateMixin {
+  // Form keys for each tab
+  final _profileFormKey = GlobalKey<FormState>();
+  final _accountFormKey = GlobalKey<FormState>();
+
+  // Using InputControllers from the backend logic
   final InputControllers _inputControllers = InputControllers();
+
+  // State variables
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+  bool _agreeToTerms = false;
+  bool _privacyPolicyRead = false;
   int _currentStep = 0;
+  late TabController _tabController;
+
+  // Backend integration variables
   Uint8List? _profileImage;
   bool _isLoading = false;
-  bool _agreeToTerms = false;
+
+  // Animation controllers
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.0, 0.7, curve: Curves.easeOut),
+      ),
+    );
+
+    _animationController.forward();
+
+    _tabController.addListener(() {
+      setState(() {
+        _currentStep = _tabController.index;
+      });
+    });
+  }
 
   @override
   void dispose() {
+    _animationController.dispose();
+    _tabController.dispose();
     _inputControllers.nameController.dispose();
     _inputControllers.usernameController.dispose();
     _inputControllers.emailController.dispose();
@@ -34,6 +78,7 @@ class _SignUpState extends State<SignUp> {
     super.dispose();
   }
 
+  // Image picker functionality from backend
   Future<void> _pickImage(ImageSource source) async {
     try {
       final picker = ImagePicker();
@@ -57,47 +102,30 @@ class _SignUpState extends State<SignUp> {
     }
   }
 
-  bool _validateCurrentStep() {
-    switch (_currentStep) {
-      case 0:
-        return _inputControllers.nameController.text.isNotEmpty &&
-            _inputControllers.usernameController.text.isNotEmpty &&
-            _inputControllers.ageController.text.isNotEmpty;
-      case 1:
-        return _inputControllers.emailController.text.isNotEmpty &&
-            _inputControllers.passwordController.text.isNotEmpty &&
-            _inputControllers.confirmPasswordController.text.isNotEmpty &&
-            _inputControllers.passwordController.text ==
-                _inputControllers.confirmPasswordController.text;
-      case 2:
-        return _agreeToTerms;
-      default:
-        return false;
+  void _nextTab() {
+    if (_currentStep == 0) {
+      if (_profileFormKey.currentState!.validate()) {
+        _tabController.animateTo(_currentStep + 1);
+      }
+    } else if (_currentStep == 1) {
+      if (_accountFormKey.currentState!.validate()) {
+        _tabController.animateTo(_currentStep + 1);
+      }
     }
   }
 
-  void _nextStep() {
-    if (!_validateCurrentStep()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all required fields')),
-      );
-      return;
-    }
-
-    if (_currentStep < 2) {
-      setState(() {
-        _currentStep++;
-      });
-    } else {
-      _handleSignUp();
+  void _previousTab() {
+    if (_currentStep > 0) {
+      _tabController.animateTo(_currentStep - 1);
     }
   }
 
+  // Backend registration logic
   Future<void> _handleSignUp() async {
-    if (!_formKey.currentState!.validate() || !_agreeToTerms) {
+    if (!_agreeToTerms || !_privacyPolicyRead) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please fill in all fields and accept the terms'),
+          content: Text('Please read and accept the privacy policy and terms'),
         ),
       );
       return;
@@ -159,308 +187,630 @@ class _SignUpState extends State<SignUp> {
     }
   }
 
-  Widget _buildCurrentStep() {
-    switch (_currentStep) {
-      case 0:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Tell us about yourself",
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            // Profile Image
-            Center(
-              child: Stack(
-                children: [
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: const Color(0xFF1E1E1E),
-                      border: Border.all(
-                        color: const Color(0xFF4CAF50),
-                        width: 2,
-                      ),
-                    ),
-                    child: _profileImage != null
-                        ? ClipOval(
-                            child: Image.memory(
-                              _profileImage!,
-                              fit: BoxFit.cover,
-                            ),
-                          )
-                        : const Icon(
-                            Icons.person,
-                            color: Colors.white,
-                            size: 50,
-                          ),
-                  ),
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: GestureDetector(
-                      onTap: () => _pickImage(ImageSource.gallery),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF4CAF50),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.camera_alt,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text(
-                  "Optional: You can add a photo now or later",
-                  style: GoogleFonts.poppins(
-                    color: Colors.white54,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            // Form Fields
-            _buildTextField(
-              controller: _inputControllers.nameController,
-              label: "Full Name",
-              icon: Icons.person_outline,
-            ),
-            const SizedBox(height: 16),
-            _buildTextField(
-              controller: _inputControllers.usernameController,
-              label: "Username",
-              prefixText: "@",
-            ),
-            const SizedBox(height: 16),
-            _buildTextField(
-              controller: _inputControllers.ageController,
-              label: "Age",
-              icon: Icons.cake_outlined,
-              keyboardType: TextInputType.number,
-            ),
-          ],
-        );
-      case 1:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Set up your account",
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 32),
-            _buildTextField(
-              controller: _inputControllers.emailController,
-              label: "Email",
-              icon: Icons.email_outlined,
-              keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 16),
-            _buildTextField(
-              controller: _inputControllers.passwordController,
-              label: "Password",
-              icon: Icons.lock_outline,
-              isPassword: true,
-            ),
-            const SizedBox(height: 16),
-            _buildTextField(
-              controller: _inputControllers.confirmPasswordController,
-              label: "Confirm Password",
-              icon: Icons.lock_outline,
-              isPassword: true,
-            ),
-            const SizedBox(height: 16),
-            _buildTextField(
-              controller: _inputControllers.phoneController,
-              label: "Phone Number",
-              icon: Icons.phone_outlined,
-              keyboardType: TextInputType.phone,
-            ),
-          ],
-        );
-      case 2:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Privacy Agreement",
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 32),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E1E1E),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    "By creating an account, you agree to our Terms of Service and Privacy Policy.",
-                    style: GoogleFonts.poppins(
-                      color: Colors.white70,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  CheckboxListTile(
-                    value: _agreeToTerms,
-                    onChanged: (value) {
-                      setState(() {
-                        _agreeToTerms = value ?? false;
-                      });
-                    },
-                    title: Text(
-                      "I agree to the Terms and Privacy Policy",
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 14,
-                      ),
-                    ),
-                    checkColor: Colors.white,
-                    activeColor: const Color(0xFF4CAF50),
-                    contentPadding: EdgeInsets.zero,
-                    controlAffinity: ListTileControlAffinity.leading,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        );
-      default:
-        return Container();
+  // Validators
+  String? _requiredFieldValidator(String? value, String fieldName) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Please enter your $fieldName';
     }
+    return null;
+  }
+
+  String? _validateUsername(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Please enter a username';
+    }
+    if (value.length < 3) {
+      return 'Username must be at least 3 characters';
+    }
+    if (!RegExp(r'^[a-zA-Z0-9._]+$').hasMatch(value)) {
+      return 'Username can only contain letters, numbers, dots, and underscores';
+    }
+    return null;
+  }
+
+  String? _validateEmail(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Please enter your email';
+    }
+    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+      return 'Please enter a valid email';
+    }
+    return null;
+  }
+
+  String? _validatePassword(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Please enter a password';
+    }
+    if (value.length < 6) {
+      return 'Password must be at least 6 characters';
+    }
+    return null;
+  }
+
+  String? _validateConfirmPassword(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Please confirm your password';
+    }
+    if (value != _inputControllers.passwordController.text) {
+      return 'Passwords do not match';
+    }
+    return null;
+  }
+
+  String? _validateAge(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Please enter your age';
+    }
+    final age = int.tryParse(value);
+    if (age == null) {
+      return 'Please enter a valid number';
+    }
+    if (age < 13) {
+      return 'You must be at least 13 years old';
+    }
+    if (age > 120) {
+      return 'Please enter a valid age';
+    }
+    return null;
+  }
+
+  String? _validatePhone(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Please enter your phone number';
+    }
+    if (!RegExp(r'^\+?[0-9]{10,15}$').hasMatch(value)) {
+      return 'Please enter a valid phone number';
+    }
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          "Create Account",
-          style: GoogleFonts.poppins(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-          ),
+      backgroundColor: colorScheme.surface,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            // Background decoration
+            Positioned(
+              top: -50,
+              right: -50,
+              child: Container(
+                width: 150,
+                height: 150,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: colorScheme.secondary.withOpacity(0.1),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: -80,
+              left: -80,
+              child: Container(
+                width: 200,
+                height: 200,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: colorScheme.secondary.withOpacity(0.1),
+                ),
+              ),
+            ),
+
+            // Back button
+            Positioned(
+              top: 16,
+              left: 16,
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: IconButton(
+                  icon: Icon(Icons.arrow_back_ios, color: colorScheme.primary),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+            ),
+
+            // Main content
+            Container(
+              padding: const EdgeInsets.only(top: 60),
+              child: Column(
+                children: [
+                  // Header
+                  FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: Column(
+                      children: [
+                        Text(
+                          'Create Account',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.primary,
+                            letterSpacing: 0.5,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 30),
+
+                  // Progress indicator
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 30.0),
+                    child: Row(
+                      children: [
+                        _buildStepIndicator(0, "Profile"),
+                        _buildStepConnector(),
+                        _buildStepIndicator(1, "Account"),
+                        _buildStepConnector(),
+                        _buildStepIndicator(2, "Privacy"),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Tabbed content
+                  Expanded(
+                    child: TabBarView(
+                      controller: _tabController,
+                      physics: const NeverScrollableScrollPhysics(),
+                      children: [
+                        _buildProfileTab(colorScheme),
+                        _buildAccountTab(colorScheme),
+                        _buildPrivacyPolicyTab(colorScheme),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
-      body: SafeArea(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Progress Steps
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+    );
+  }
+
+  Widget _buildStepIndicator(int step, String label) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isActive = step == _currentStep;
+    final isCompleted = step < _currentStep;
+
+    return Expanded(
+      child: Column(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: isActive || isCompleted
+                  ? colorScheme.secondary
+                  : colorScheme.primary.withOpacity(0.1),
+              shape: BoxShape.circle,
+              boxShadow: isActive
+                  ? [
+                      BoxShadow(
+                        color: colorScheme.secondary.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Center(
+              child: isCompleted
+                  ? Icon(Icons.check, color: Colors.white, size: 20)
+                  : Text(
+                      '${step + 1}',
+                      style: TextStyle(
+                        color: isActive ? Colors.white : colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(
+              color: isActive
+                  ? colorScheme.secondary
+                  : colorScheme.primary.withOpacity(0.7),
+              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepConnector() {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: 40,
+      height: 3,
+      color: colorScheme.primary.withOpacity(0.1),
+    );
+  }
+
+  Widget _buildProfileTab(ColorScheme colorScheme) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Form(
+        key: _profileFormKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 10),
+            Text(
+              'Tell us about yourself',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: colorScheme.primary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+
+            // Profile photo with image picker integration
+            Center(
+              child: Stack(
+                children: [
+                  GestureDetector(
+                    onTap: () => _pickImage(ImageSource.gallery),
+                    child: Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: colorScheme.secondary.withOpacity(0.5),
+                          width: 2,
+                        ),
+                      ),
+                      child: _profileImage != null
+                          ? ClipOval(
+                              child: Image.memory(
+                                _profileImage!,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.person,
+                              size: 60,
+                              color: Colors.white,
+                            ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: GestureDetector(
+                      onTap: () => _pickImage(ImageSource.gallery),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: colorScheme.secondary,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt,
+                          size: 20,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Optional text
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'Optional: You can add a photo now or later',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: colorScheme.primary.withOpacity(0.6),
+                  fontStyle: FontStyle.italic,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Form fields
+            _buildTextField(
+              controller: _inputControllers.nameController,
+              label: 'Full Name',
+              hint: 'Enter your full name',
+              icon: Icons.person_outline,
+              validator: (value) => _requiredFieldValidator(value, 'full name'),
+            ),
+            const SizedBox(height: 16),
+
+            _buildTextField(
+              controller: _inputControllers.usernameController,
+              label: 'Username',
+              hint: 'Choose a unique username',
+              icon: Icons.alternate_email,
+              validator: _validateUsername,
+            ),
+            const SizedBox(height: 16),
+
+            _buildTextField(
+              controller: _inputControllers.ageController,
+              label: 'Age',
+              hint: 'Enter your age',
+              icon: Icons.cake_outlined,
+              keyboardType: TextInputType.number,
+              validator: _validateAge,
+            ),
+            const SizedBox(height: 40),
+
+            _buildActionButton(
+              label: 'NEXT',
+              onPressed: _nextTab,
+              icon: Icons.arrow_forward,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAccountTab(ColorScheme colorScheme) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Form(
+        key: _accountFormKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 10),
+            Text(
+              'Set up your account',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: colorScheme.primary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 30),
+            _buildTextField(
+              controller: _inputControllers.emailController,
+              label: 'Email Address',
+              hint: 'Enter your email',
+              icon: Icons.email_outlined,
+              keyboardType: TextInputType.emailAddress,
+              validator: _validateEmail,
+            ),
+            const SizedBox(height: 16),
+            _buildTextField(
+              controller: _inputControllers.phoneController,
+              label: 'Phone Number',
+              hint: 'Enter your phone number',
+              icon: Icons.phone_outlined,
+              keyboardType: TextInputType.phone,
+              validator: _validatePhone,
+            ),
+            const SizedBox(height: 16),
+            _buildTextField(
+              controller: _inputControllers.passwordController,
+              label: 'Password',
+              hint: 'Create a strong password',
+              icon: Icons.lock_outline,
+              isPassword: true,
+              obscureText: _obscurePassword,
+              validator: _validatePassword,
+              onTogglePassword: () {
+                setState(() {
+                  _obscurePassword = !_obscurePassword;
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+            _buildTextField(
+              controller: _inputControllers.confirmPasswordController,
+              label: 'Confirm Password',
+              hint: 'Confirm your password',
+              icon: Icons.lock_outline,
+              isPassword: true,
+              obscureText: _obscureConfirmPassword,
+              validator: _validateConfirmPassword,
+              onTogglePassword: () {
+                setState(() {
+                  _obscureConfirmPassword = !_obscureConfirmPassword;
+                });
+              },
+            ),
+            const SizedBox(height: 40),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildActionButton(
+                    label: 'BACK',
+                    onPressed: _previousTab,
+                    icon: Icons.arrow_back,
+                    isOutlined: true,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildActionButton(
+                    label: 'NEXT',
+                    onPressed: _nextTab,
+                    icon: Icons.arrow_forward,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPrivacyPolicyTab(ColorScheme colorScheme) {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Privacy Policy & Terms',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: colorScheme.primary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 20),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: colorScheme.primary.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
                   children: [
-                    _buildStep(1, "Profile", _currentStep >= 0),
-                    _buildStepLine(_currentStep >= 1),
-                    _buildStep(2, "Account", _currentStep >= 1),
-                    _buildStepLine(_currentStep >= 2),
-                    _buildStep(3, "Privacy", _currentStep >= 2),
+                    Text(
+                      'Privacy Policy',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _privacyPolicyText,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: colorScheme.primary.withOpacity(0.7),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Terms of Service',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _termsOfServiceText,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: colorScheme.primary.withOpacity(0.7),
+                      ),
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(height: 40),
-
-              // Content
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Checkbox(
+                value: _privacyPolicyRead,
+                activeColor: colorScheme.secondary,
+                onChanged: (value) {
+                  setState(() {
+                    _privacyPolicyRead = value ?? false;
+                  });
+                },
+              ),
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: _buildCurrentStep(),
+                child: Text(
+                  'I have read the Privacy Policy',
+                  style: TextStyle(fontSize: 14, color: colorScheme.primary),
                 ),
               ),
-
-              // Next Button
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _nextStep,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4CAF50),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                _currentStep == 2 ? 'CREATE ACCOUNT' : 'NEXT',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 1,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Icon(
-                                _currentStep == 2
-                                    ? Icons.check_circle
-                                    : Icons.arrow_forward,
-                                size: 20,
-                              ),
-                            ],
-                          ),
+            ],
+          ),
+          Row(
+            children: [
+              Checkbox(
+                value: _agreeToTerms,
+                activeColor: colorScheme.secondary,
+                onChanged: (value) {
+                  setState(() {
+                    _agreeToTerms = value ?? false;
+                  });
+                },
+              ),
+              Expanded(
+                child: Text(
+                  'I agree to the Terms of Service and Privacy Policy',
+                  style: TextStyle(fontSize: 14, color: colorScheme.primary),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 30),
+          Row(
+            children: [
+              Expanded(
+                child: _buildActionButton(
+                  label: 'BACK',
+                  onPressed: _previousTab,
+                  icon: Icons.arrow_back,
+                  isOutlined: true,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildActionButton(
+                  label: _isLoading ? 'CREATING...' : 'REGISTER',
+                  onPressed: _agreeToTerms && _privacyPolicyRead && !_isLoading
+                      ? _handleSignUp
+                      : null,
+                  icon: _isLoading ? null : Icons.check_circle_outline,
+                  isLoading: _isLoading,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Already have an account?',
+                style: TextStyle(color: colorScheme.primary.withOpacity(0.7)),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Sign In',
+                  style: TextStyle(
+                    color: colorScheme.secondary,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }
@@ -468,93 +818,160 @@ class _SignUpState extends State<SignUp> {
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
-    IconData? icon,
-    String? prefixText,
-    TextInputType? keyboardType,
+    required String hint,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
     bool isPassword = false,
+    bool obscureText = false,
+    String? Function(String?)? validator,
+    VoidCallback? onTogglePassword,
   }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      obscureText: isPassword,
-      style: GoogleFonts.poppins(
-        color: Colors.white,
-        fontSize: 16,
-      ),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: GoogleFonts.poppins(
-          color: Colors.white54,
-          fontSize: 16,
-        ),
-        prefixIcon:
-            icon != null ? Icon(icon, color: const Color(0xFF4CAF50)) : null,
-        prefixText: prefixText,
-        prefixStyle: GoogleFonts.poppins(
-          color: const Color(0xFF4CAF50),
-          fontSize: 16,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(30),
-          borderSide: BorderSide.none,
-        ),
-        filled: true,
-        fillColor: const Color(0xFF1E1E1E),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 24,
-          vertical: 16,
-        ),
-      ),
-      validator: (value) {
-        if (value == null || value.trim().isEmpty) {
-          return 'This field is required';
-        }
-        if (isPassword && value.length < 6) {
-          return 'Password must be at least 6 characters';
-        }
-        return null;
-      },
-    );
-  }
+    final colorScheme = Theme.of(context).colorScheme;
 
-  Widget _buildStep(int number, String label, bool isActive) {
-    return Column(
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isActive ? const Color(0xFF4CAF50) : const Color(0xFF1E1E1E),
-          ),
-          child: Center(
-            child: Text(
-              number.toString(),
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: GoogleFonts.poppins(
-            color: isActive ? const Color(0xFF4CAF50) : Colors.grey,
-            fontSize: 12,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStepLine(bool isActive) {
     return Container(
-      width: 40,
-      height: 2,
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      color: isActive ? const Color(0xFF4CAF50) : const Color(0xFF1E1E1E),
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.primary.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller: controller,
+        obscureText: isPassword ? obscureText : false,
+        keyboardType: keyboardType,
+        validator: validator,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          floatingLabelBehavior: FloatingLabelBehavior.never,
+          filled: true,
+          fillColor: colorScheme.surface,
+          errorMaxLines: 2,
+          prefixIcon: Icon(icon, color: colorScheme.secondary),
+          suffixIcon: isPassword
+              ? IconButton(
+                  icon: Icon(
+                    obscureText ? Icons.visibility_off : Icons.visibility,
+                    color: colorScheme.primary.withOpacity(0.7),
+                  ),
+                  onPressed: onTogglePassword,
+                )
+              : null,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: colorScheme.secondary, width: 1.5),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: Colors.red.shade400, width: 1.5),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: Colors.red.shade400, width: 1.5),
+          ),
+        ),
+      ),
     );
   }
+
+  Widget _buildActionButton({
+    required String label,
+    required VoidCallback? onPressed,
+    IconData? icon,
+    bool isOutlined = false,
+    bool isLoading = false,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      height: 50,
+      decoration: isOutlined
+          ? null
+          : BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: colorScheme.secondary.withOpacity(0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor:
+              isOutlined ? Colors.transparent : colorScheme.secondary,
+          foregroundColor: isOutlined ? colorScheme.secondary : Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: isOutlined
+                ? BorderSide(color: colorScheme.secondary, width: 1.5)
+                : BorderSide.none,
+          ),
+        ),
+        child: isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (isOutlined && icon == Icons.arrow_back)
+                    Icon(icon, size: 18),
+                  if (isOutlined && icon == Icons.arrow_back)
+                    const SizedBox(width: 8),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  if ((!isOutlined || icon != Icons.arrow_back) && icon != null)
+                    const SizedBox(width: 8),
+                  if ((!isOutlined || icon != Icons.arrow_back) && icon != null)
+                    Icon(icon, size: 18),
+                ],
+              ),
+      ),
+    );
+  }
+
+  final String _privacyPolicyText = '''
+Our app is committed to protecting your privacy. We collect personal information such as your name, email address, and demographic information to provide you with a personalized experience.
+
+We use this information to:
+• Create and manage your account
+• Provide you with personalized content and recommendations
+• Improve our services and develop new features
+• Communicate with you about updates and new features
+''';
+
+  final String _termsOfServiceText = '''
+By accessing or using our app, you agree to be bound by these Terms of Service. If you disagree with any part of the terms, you may not access the app.
+
+CONTENT AND CONDUCT
+• You are responsible for all content you post and activity that occurs under your account
+• You must not post content that is illegal, offensive, threatening, defamatory, or infringing on intellectual property rights
+• You must not use the app to engage in any illegal activities or to harass, bully, or harm others
+''';
 }
