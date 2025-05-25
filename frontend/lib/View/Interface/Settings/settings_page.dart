@@ -149,158 +149,156 @@ class _SettingsPageState extends State<SettingsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Profile Image
-            Center(
-              child: Stack(
+            // Profile Section
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: theme.colorScheme.primary.withOpacity(0.1),
+                ),
+              ),
+              child: Row(
                 children: [
                   CircleAvatar(
-                    radius: 50,
-                    backgroundColor: theme.colorScheme.surface,
-                    backgroundImage: _selectedImage != null
-                        ? MemoryImage(_selectedImage!)
-                        : (user.profileImage != null
-                            ? NetworkImage(user.profileImage!)
-                            : null) as ImageProvider?,
-                    child: _selectedImage == null && user.profileImage == null
+                    radius: 30,
+                    backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                    backgroundImage: user.profileImage != null
+                        ? NetworkImage(user.profileImage!)
+                        : null,
+                    child: user.profileImage == null
                         ? Icon(Icons.person,
-                            size: 50, color: theme.colorScheme.primary)
+                            color: theme.colorScheme.primary, size: 30)
                         : null,
                   ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: GestureDetector(
-                      onTap: () => _pickImage(ImageSource.gallery),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.secondary,
-                          shape: BoxShape.circle,
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user.name,
+                          style: GoogleFonts.poppins(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.primary,
+                          ),
                         ),
-                        child: Icon(
-                          Icons.camera_alt,
-                          size: 20,
-                          color: theme.colorScheme.surface,
+                        Text(
+                          user.email,
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: theme.colorScheme.primary.withOpacity(0.7),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 32),
-
-            // Name Field
-            Text(
-              'Name',
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _nameController,
-              style: TextStyle(color: theme.colorScheme.primary),
-              decoration: InputDecoration(
-                hintText: 'Enter your name',
-                hintStyle: TextStyle(
-                    color: theme.colorScheme.primary.withOpacity(0.5)),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: theme.colorScheme.primary),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                      color: theme.colorScheme.primary.withOpacity(0.5)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: theme.colorScheme.primary),
-                ),
-                filled: true,
-                fillColor: theme.colorScheme.surface,
-              ),
-            ),
             const SizedBox(height: 24),
 
-            // Bio Field
+            // Account Settings Section
             Text(
-              'Bio',
+              'Account Settings',
               style: GoogleFonts.poppins(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: theme.colorScheme.primary,
               ),
             ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _bioController,
-              style: TextStyle(color: theme.colorScheme.primary),
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: 'Write something about yourself',
-                hintStyle: TextStyle(
-                    color: theme.colorScheme.primary.withOpacity(0.5)),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: theme.colorScheme.primary),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                      color: theme.colorScheme.primary.withOpacity(0.5)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: theme.colorScheme.primary),
-                ),
-                filled: true,
-                fillColor: theme.colorScheme.surface,
-              ),
+            const SizedBox(height: 12),
+            _buildSettingButton(
+              context,
+              icon: Iconsax.edit,
+              title: 'Edit Profile',
+              subtitle: 'Update your profile information',
+              onTap: () => Navigator.pushNamed(context, '/edit_profile'),
             ),
-            const SizedBox(height: 32),
+            _buildSettingButton(
+              context,
+              icon: Iconsax.notification,
+              title: 'Notifications',
+              subtitle: 'Manage your notification preferences',
+              onTap: () => Navigator.pushNamed(context, '/notifications'),
+            ),
+            _buildSettingButton(
+              context,
+              icon: Iconsax.lock,
+              title: 'Privacy',
+              subtitle: 'Control your privacy settings',
+              onTap: () => Navigator.pushNamed(context, '/privacy'),
+            ),
 
-            // Save Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _saveChanges,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: theme.colorScheme.secondary,
-                  foregroundColor: theme.colorScheme.surface,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: _isLoading
-                    ? SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                              theme.colorScheme.surface),
-                        ),
-                      )
-                    : Text(
-                        'Save Changes',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+            const SizedBox(height: 24),
+
+            // App Settings Section
+            Text(
+              'App Settings',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.primary,
               ),
             ),
+            const SizedBox(height: 12),
+            _buildSettingButton(
+              context,
+              icon: Iconsax.language_square,
+              title: 'Language',
+              subtitle: 'Change app language',
+              onTap: () => Navigator.pushNamed(context, '/language'),
+            ),
+            _buildSettingButton(
+              context,
+              icon: Iconsax.moon,
+              title: 'Dark Mode',
+              subtitle: 'Toggle app theme',
+              onTap: () => Navigator.pushNamed(context, '/theme'),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Support Section
+            Text(
+              'Support',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildSettingButton(
+              context,
+              icon: Iconsax.info_circle,
+              title: 'About',
+              subtitle: 'Learn more about BLYND',
+              onTap: () => Navigator.pushNamed(context, '/about'),
+            ),
+            _buildSettingButton(
+              context,
+              icon: Iconsax.document,
+              title: 'Privacy Policy',
+              subtitle: 'Read our privacy policy',
+              onTap: () => Navigator.pushNamed(context, '/privacy_policy'),
+            ),
+            _buildSettingButton(
+              context,
+              icon: Iconsax.message_question,
+              title: 'Help & Support',
+              subtitle: 'Get help with BLYND',
+              onTap: () => Navigator.pushNamed(context, '/help'),
+            ),
+
             const SizedBox(height: 32),
 
             // Logout Button
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
+              child: ElevatedButton.icon(
                 onPressed: () async {
                   final shouldLogout = await showDialog<bool>(
                     context: context,
@@ -342,7 +340,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   );
 
-                  if (shouldLogout == true && mounted) {
+                  if (shouldLogout == true) {
                     try {
                       // Show loading indicator
                       showDialog(
@@ -358,12 +356,12 @@ class _SettingsPageState extends State<SettingsPage> {
                       await context.read<UserProvider>().logout();
 
                       // Close loading indicator
-                      if (mounted) {
+                      if (context.mounted) {
                         Navigator.pop(context);
                       }
 
-                      // Navigate to login screen and clear all routes
-                      if (mounted) {
+                      // Navigate to welcome screen and clear all routes
+                      if (context.mounted) {
                         Navigator.pushNamedAndRemoveUntil(
                           context,
                           '/welcome_page',
@@ -372,11 +370,11 @@ class _SettingsPageState extends State<SettingsPage> {
                       }
                     } catch (e) {
                       // Close loading indicator if it's showing
-                      if (mounted) {
+                      if (context.mounted) {
                         Navigator.pop(context);
                       }
 
-                      if (mounted) {
+                      if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
@@ -398,7 +396,8 @@ class _SettingsPageState extends State<SettingsPage> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: Text(
+                icon: const Icon(Iconsax.logout),
+                label: Text(
                   'Logout',
                   style: GoogleFonts.poppins(
                     fontSize: 16,
@@ -407,7 +406,81 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ),
             ),
+            const SizedBox(height: 24),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSettingButton(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: theme.colorScheme.primary.withOpacity(0.1),
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: theme.colorScheme.primary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                      Text(
+                        subtitle,
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: theme.colorScheme.primary.withOpacity(0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  color: theme.colorScheme.primary.withOpacity(0.7),
+                  size: 16,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
