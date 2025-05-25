@@ -39,17 +39,38 @@ class UserModel {
   }
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    // Handle MongoDB _id field
+    String userId = '';
+    if (json['_id'] != null) {
+      userId = json['_id'].toString();
+    } else if (json['id'] != null) {
+      userId = json['id'].toString();
+    }
+
+    // Convert followers and following IDs to strings
+    List<String> followersList = [];
+    if (json['followers'] != null) {
+      followersList =
+          (json['followers'] as List).map((id) => id.toString()).toList();
+    }
+
+    List<String> followingList = [];
+    if (json['following'] != null) {
+      followingList =
+          (json['following'] as List).map((id) => id.toString()).toList();
+    }
+
     return UserModel(
-      id: json['id'] ?? '',
-      name: json['name'] ?? '',
-      userName: json['userName'] ?? '',
-      email: json['email'] ?? '',
-      profileImage: json['profileImage'],
-      bio: json['bio'],
-      followers: List<String>.from(json['followers'] ?? []),
-      following: List<String>.from(json['following'] ?? []),
-      age: json['age'] ?? 0,
-      phone: json['phone'] ?? '',
+      id: userId,
+      name: json['name']?.toString() ?? '',
+      userName: json['userName']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      profileImage: json['profileImage']?.toString(),
+      bio: json['bio']?.toString(),
+      followers: followersList,
+      following: followingList,
+      age: json['age'] is String ? int.parse(json['age']) : (json['age'] ?? 0),
+      phone: json['phone']?.toString() ?? '',
     );
   }
 

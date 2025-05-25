@@ -31,7 +31,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadUserProfile() async {
     try {
-      final user = await ApiService.getUserProfile(null);
+      final user = await ApiService.getCurrentUser();
       setState(() {
         _user = user;
         _nameController.text = user.name;
@@ -40,7 +40,10 @@ class _SettingsPageState extends State<SettingsPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading profile: $e')),
+          SnackBar(
+            content: Text('Error loading profile: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }

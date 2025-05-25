@@ -55,7 +55,9 @@ const userSchema = new mongoose.Schema({
     ref: 'Post'
   }]
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
 // Encrypt password using bcrypt
@@ -76,7 +78,23 @@ userSchema.methods.comparePassword = async function(enteredPassword) {
 // Return public profile (exclude sensitive data)
 userSchema.methods.toPublicProfile = function() {
   const obj = this.toObject();
+  
+  // Transform _id to id string
+  obj.id = obj._id.toString();
+  delete obj._id;
   delete obj.password;
+  
+  // Convert ObjectId arrays to string arrays
+  if (obj.followers) {
+    obj.followers = obj.followers.map(id => id.toString());
+  }
+  if (obj.following) {
+    obj.following = obj.following.map(id => id.toString());
+  }
+  if (obj.posts) {
+    obj.posts = obj.posts.map(id => id.toString());
+  }
+
   return obj;
 };
 
