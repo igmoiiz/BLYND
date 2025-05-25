@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -164,7 +166,7 @@ class _InterfacePageState extends State<InterfacePage> {
 
                     final post = _posts[index];
                     return PostCard(
-                      userName: post.userName ?? 'Unknown User',
+                      userName: post.userName,
                       userImageUrl: post.userProfileImage ??
                           'https://via.placeholder.com/150',
                       postImageUrl:
@@ -175,13 +177,13 @@ class _InterfacePageState extends State<InterfacePage> {
                       onLike: () => _handleLike(post.postId),
                       onComment: () => _showCommentSheet(post.postId),
                       onSave: () {},
-                      createdAt: post.createdAt ?? DateTime.now(),
-                      likeCount: post.likeCount ?? 0,
-                      comments: post.comments ?? [],
+                      createdAt: post.createdAt,
+                      likeCount: post.likeCount,
+                      comments: post.comments,
                       postId: post.postId,
-                      userEmail: post.userEmail ?? '',
-                      userId: post.userId ?? '',
-                      likedBy: post.likedBy ?? [],
+                      userEmail: post.userEmail,
+                      userId: post.userId,
+                      likedBy: post.likedBy,
                     );
                   },
                   childCount: _posts.length + (_isLoading ? 1 : 0),
