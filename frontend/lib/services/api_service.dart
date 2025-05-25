@@ -13,7 +13,7 @@ class ApiService {
   static String? _token;
 
   // Set token after login/register
-  static void setToken(String token) {
+  static void setToken(String? token) {
     _token = token;
   }
 
@@ -354,13 +354,18 @@ class ApiService {
                   ),
                 );
 
+        if (uploadResponse.isEmpty) {
+          throw Exception('Failed to upload image to Supabase');
+        }
+
         log('Upload response path: $uploadResponse');
 
         // Get the public URL for the uploaded image
-        profileImageUrl =
+        final publicUrl =
             supabase.storage.from('user-images').getPublicUrl(fileName);
 
-        log('Generated profile image URL: $profileImageUrl');
+        log('Generated profile image URL: $publicUrl');
+        profileImageUrl = publicUrl;
       }
 
       // Create request body
@@ -389,6 +394,22 @@ class ApiService {
     } catch (e) {
       log('Update profile error: $e');
       throw Exception('Update profile error: $e');
+    }
+  }
+
+  static Future<void> logout() async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/logout'),
+        headers: _headers,
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Logout failed: ${response.body}');
+      }
+    } finally {
+      // Clear token even if the request fails
+      setToken(null);
     }
   }
 }

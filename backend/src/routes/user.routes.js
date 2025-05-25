@@ -61,33 +61,27 @@ router.get('/:userId', protect, async (req, res) => {
 // Update user profile
 router.put('/profile', 
   protect,
-  upload.single('profileImage'),
   async (req, res) => {
     try {
-      const { name, bio } = req.body;
+      const { name, bio, profileImage } = req.body;
       const updates = {};
 
       if (name) updates.name = name;
       if (bio) updates.bio = bio;
-
-      // Handle profile image upload
-      if (req.file) {
-        await supabaseService.ensureBucketExists(process.env.SUPABASE_USER_BUCKET);
-        const imageUrl = await supabaseService.uploadUserImage(req.file, req.user._id);
-        updates.profileImage = imageUrl;
-
-        // Delete old profile image if it exists
-        if (req.user.profileImage) {
-          const oldFileName = req.user.profileImage.split('/').pop();
-          await supabaseService.deleteImage(process.env.SUPABASE_USER_BUCKET, oldFileName);
-        }
-      }
+      if (profileImage) updates.profileImage = profileImage;
 
       const user = await User.findByIdAndUpdate(
         req.user._id,
         updates,
         { new: true }
       ).select('-password');
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
 
       res.json({
         success: true,

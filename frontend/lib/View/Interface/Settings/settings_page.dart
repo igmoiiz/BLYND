@@ -295,6 +295,118 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
               ),
             ),
+            const SizedBox(height: 32),
+
+            // Logout Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () async {
+                  final shouldLogout = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      backgroundColor: theme.scaffoldBackgroundColor,
+                      title: Text(
+                        'Logout',
+                        style: GoogleFonts.poppins(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      content: Text(
+                        'Are you sure you want to logout?',
+                        style: GoogleFonts.poppins(
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: Text(
+                            'Cancel',
+                            style: GoogleFonts.poppins(
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: Text(
+                            'Logout',
+                            style: GoogleFonts.poppins(
+                              color: Colors.red,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (shouldLogout == true && mounted) {
+                    try {
+                      // Show loading indicator
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (context) => Center(
+                          child: CircularProgressIndicator(
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      );
+
+                      await context.read<UserProvider>().logout();
+
+                      // Close loading indicator
+                      if (mounted) {
+                        Navigator.pop(context);
+                      }
+
+                      // Navigate to login screen and clear all routes
+                      if (mounted) {
+                        Navigator.pushNamedAndRemoveUntil(
+                          context,
+                          '/welcome_page',
+                          (route) => false,
+                        );
+                      }
+                    } catch (e) {
+                      // Close loading indicator if it's showing
+                      if (mounted) {
+                        Navigator.pop(context);
+                      }
+
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Error logging out: $e',
+                              style: GoogleFonts.poppins(),
+                            ),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.error,
+                  foregroundColor: theme.colorScheme.surface,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  'Logout',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
