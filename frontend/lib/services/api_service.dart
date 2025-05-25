@@ -247,10 +247,28 @@ class ApiService {
   }
 
   // User Profile
-  static Future<UserModel> getUserProfile(String? userId) async {
+  static Future<UserModel> getCurrentUser() async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/users/${userId ?? 'me'}'),
+        Uri.parse('$baseUrl/auth/me'),
+        headers: _headers,
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to fetch current user: ${response.body}');
+      }
+
+      final data = jsonDecode(response.body);
+      return UserModel.fromJson(data['user']);
+    } catch (e) {
+      throw Exception('Get current user error: $e');
+    }
+  }
+
+  static Future<UserModel> getUserProfile(String userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/users/$userId'),
         headers: _headers,
       );
 

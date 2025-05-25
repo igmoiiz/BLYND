@@ -33,8 +33,10 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _loadUserProfile() async {
     setState(() => _isLoading = true);
     try {
-      final user = await ApiService.getUserProfile(widget.userId);
-      final posts = await ApiService.getUserPosts(widget.userId ?? '');
+      final user = widget.userId != null
+          ? await ApiService.getUserProfile(widget.userId!)
+          : await ApiService.getCurrentUser();
+      final posts = await ApiService.getUserPosts(widget.userId ?? user.id);
       if (mounted) {
         setState(() {
           _user = user;
@@ -44,7 +46,10 @@ class _ProfilePageState extends State<ProfilePage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading profile: $e')),
+          SnackBar(
+            content: Text('Error loading profile: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
