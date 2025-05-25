@@ -7,7 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ApiService {
   static const String baseUrl =
-      'http://10.0.2.2:3000/api'; // Use 10.0.2.2 for Android emulator
+      'http://192.168.100.62:3000/api'; // Use 10.0.2.2 for Android emulator
   static String? _token;
 
   // Set token after login/register
