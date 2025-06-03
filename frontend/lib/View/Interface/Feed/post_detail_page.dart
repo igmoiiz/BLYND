@@ -9,6 +9,7 @@ import 'package:frontend/utils/Components/comment_sheet.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chewie/chewie.dart';
 import 'package:video_player/video_player.dart';
+import 'package:frontend/utils/Components/media_carousel.dart';
 
 class PostDetailPage extends StatefulWidget {
   final PostModel post;
@@ -23,7 +24,6 @@ class _PostDetailPageState extends State<PostDetailPage> {
   late PostModel _post;
   final TextEditingController _commentController = TextEditingController();
   bool _isLoading = false;
-  int _currentMediaIndex = 0;
   List<ChewieController?> _chewieControllers = [];
 
   @override
@@ -126,71 +126,9 @@ class _PostDetailPageState extends State<PostDetailPage> {
     }
   }
 
-  Widget _buildMediaCarousel() {
-    final media = widget.post.media;
-    if (media.isEmpty) return const SizedBox();
-    return Column(
-      children: [
-        SizedBox(
-          height: 350,
-          child: PageView.builder(
-            itemCount: media.length,
-            onPageChanged: (i) => setState(() => _currentMediaIndex = i),
-            itemBuilder: (context, index) {
-              final m = media[index];
-              if (m.type == 'video') {
-                final chewie = _chewieControllers[index];
-                return chewie != null
-                    ? Center(
-                        child: AspectRatio(
-                          aspectRatio:
-                              chewie.videoPlayerController.value.aspectRatio > 0
-                                  ? chewie
-                                      .videoPlayerController.value.aspectRatio
-                                  : 9 / 16,
-                          child: Chewie(controller: chewie),
-                        ),
-                      )
-                    : const Center(child: CircularProgressIndicator());
-              } else {
-                return CachedNetworkImage(
-                  imageUrl: m.url,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  placeholder: (ctx, url) =>
-                      const Center(child: CircularProgressIndicator()),
-                  errorWidget: (ctx, url, err) => const Icon(Icons.error),
-                );
-              }
-            },
-          ),
-        ),
-        if (media.length > 1)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              media.length,
-              (i) => Container(
-                margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _currentMediaIndex == i
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.grey,
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final size = MediaQuery.of(context).size;
 
     return Scaffold(
       appBar: AppBar(
@@ -216,7 +154,13 @@ class _PostDetailPageState extends State<PostDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildMediaCarousel(),
+            MediaCarousel(
+              media: _post.media,
+              height: 350,
+              borderRadius: 0,
+              showIndicators: true,
+              autoPlay: true,
+            ),
             // User Info
             Padding(
               padding: const EdgeInsets.all(16),

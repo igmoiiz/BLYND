@@ -1,19 +1,13 @@
-// ignore_for_file: deprecated_member_use, use_build_context_synchronously
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously, depend_on_referenced_packages
 
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:frontend/utils/Components/custom_button.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
-import 'package:frontend/providers/post_provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:http/http.dart' as http;
-import 'package:http/http.dart';
 import 'package:http_parser/http_parser.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
@@ -109,7 +103,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
               width: 180,
               height: 220,
               color: Theme.of(context).colorScheme.surface,
-              child: Center(
+              child: const Center(
                 child: Icon(Icons.broken_image, color: Colors.red, size: 40),
               ),
             );

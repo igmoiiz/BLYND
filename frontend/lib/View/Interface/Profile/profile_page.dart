@@ -11,6 +11,7 @@ import 'package:frontend/utils/Components/post_card.dart';
 import 'package:frontend/View/Interface/Settings/settings_page.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:video_player/video_player.dart';
+import 'package:frontend/utils/Components/media_carousel.dart';
 
 class ProfilePage extends StatefulWidget {
   final String? userId;
@@ -332,43 +333,13 @@ class _ProfilePageState extends State<ProfilePage> {
                       },
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: post.media.isNotEmpty
-                            ? (post.media.first.type == 'video'
-                                ? _ProfileVideoPreviewGrid(
-                                    url: post.media.first.url)
-                                : CachedNetworkImage(
-                                    imageUrl: post.media.first.url,
-                                    fit: BoxFit.cover,
-                                    width: double.infinity,
-                                    height: double.infinity,
-                                    placeholder: (context, url) => Container(
-                                      color: theme.colorScheme.surface,
-                                      child: Center(
-                                        child: CircularProgressIndicator(
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                            theme.colorScheme.primary,
-                                          ),
-                                          strokeWidth: 2,
-                                        ),
-                                      ),
-                                    ),
-                                    errorWidget: (context, url, error) =>
-                                        Container(
-                                      color: theme.colorScheme.surface,
-                                      child: Icon(
-                                        Iconsax.image,
-                                        color: theme.colorScheme.primary,
-                                      ),
-                                    ),
-                                  ))
-                            : Container(
-                                color: theme.colorScheme.surface,
-                                child: Icon(
-                                  Iconsax.image,
-                                  color: theme.colorScheme.primary,
-                                ),
-                              ),
+                        child: MediaCarousel(
+                          media: post.media,
+                          height: 120,
+                          borderRadius: 8,
+                          showIndicators: false,
+                          autoPlay: true,
+                        ),
                       ),
                     );
                   },

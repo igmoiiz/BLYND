@@ -1,14 +1,15 @@
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:frontend/models/post_model.dart';
 import 'package:frontend/models/user_model.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:frontend/View/Interface/Profile/user_profile_page.dart';
 import 'package:frontend/View/Interface/Feed/post_detail_page.dart';
-import 'package:chewie/chewie.dart';
 import 'package:video_player/video_player.dart';
+import 'package:frontend/utils/Components/media_carousel.dart';
 
 enum ExploreTab { posts, users }
 
@@ -71,38 +72,13 @@ class _ExplorePageState extends State<ExplorePage> {
 
   Widget _buildPostGridItem(
       PostModel post, BuildContext context, ThemeData theme) {
-    if (post.media.isEmpty) {
-      return Container(
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Icon(Iconsax.image),
-      );
-    }
-    final firstMedia = post.media.first;
-    if (firstMedia.type == 'video') {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: _ExploreVideoPreview(url: firstMedia.url),
-      );
-    } else {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: CachedNetworkImage(
-          imageUrl: firstMedia.url,
-          fit: BoxFit.cover,
-          placeholder: (context, url) => Container(
-            color: theme.colorScheme.surface,
-            child: const Center(child: CircularProgressIndicator()),
-          ),
-          errorWidget: (context, url, error) => Container(
-            color: theme.colorScheme.surface,
-            child: const Icon(Iconsax.image),
-          ),
-        ),
-      );
-    }
+    return MediaCarousel(
+      media: post.media,
+      height: 120,
+      borderRadius: 8,
+      showIndicators: false,
+      autoPlay: true,
+    );
   }
 
   @override
