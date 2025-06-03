@@ -7,6 +7,8 @@ import 'package:frontend/models/post_model.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:frontend/utils/Components/comment_sheet.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:chewie/chewie.dart';
+import 'package:video_player/video_player.dart';
 
 class PostDetailPage extends StatefulWidget {
   final PostModel post;
@@ -21,16 +23,36 @@ class _PostDetailPageState extends State<PostDetailPage> {
   late PostModel _post;
   final TextEditingController _commentController = TextEditingController();
   bool _isLoading = false;
+  int _currentMediaIndex = 0;
+  List<ChewieController?> _chewieControllers = [];
 
   @override
   void initState() {
     super.initState();
     _post = widget.post;
+    final media = widget.post.media;
+    _chewieControllers = media.map((m) {
+      if (m.type == 'video') {
+        final controller = VideoPlayerController.network(m.url);
+        return ChewieController(
+          videoPlayerController: controller,
+          autoPlay: true,
+          looping: true,
+          showControls: false,
+          allowMuting: true,
+          aspectRatio: null,
+        );
+      }
+      return null;
+    }).toList();
   }
 
   @override
   void dispose() {
     _commentController.dispose();
+    for (final chewie in _chewieControllers) {
+      chewie?.dispose();
+    }
     super.dispose();
   }
 
@@ -104,6 +126,67 @@ class _PostDetailPageState extends State<PostDetailPage> {
     }
   }
 
+  Widget _buildMediaCarousel() {
+    final media = widget.post.media;
+    if (media.isEmpty) return const SizedBox();
+    return Column(
+      children: [
+        SizedBox(
+          height: 350,
+          child: PageView.builder(
+            itemCount: media.length,
+            onPageChanged: (i) => setState(() => _currentMediaIndex = i),
+            itemBuilder: (context, index) {
+              final m = media[index];
+              if (m.type == 'video') {
+                final chewie = _chewieControllers[index];
+                return chewie != null
+                    ? Center(
+                        child: AspectRatio(
+                          aspectRatio:
+                              chewie.videoPlayerController.value.aspectRatio > 0
+                                  ? chewie
+                                      .videoPlayerController.value.aspectRatio
+                                  : 9 / 16,
+                          child: Chewie(controller: chewie),
+                        ),
+                      )
+                    : const Center(child: CircularProgressIndicator());
+              } else {
+                return CachedNetworkImage(
+                  imageUrl: m.url,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  placeholder: (ctx, url) =>
+                      const Center(child: CircularProgressIndicator()),
+                  errorWidget: (ctx, url, err) => const Icon(Icons.error),
+                );
+              }
+            },
+          ),
+        ),
+        if (media.length > 1)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              media.length,
+              (i) => Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _currentMediaIndex == i
+                      ? Theme.of(context).colorScheme.primary
+                      : Colors.grey,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -133,6 +216,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _buildMediaCarousel(),
             // User Info
             Padding(
               padding: const EdgeInsets.all(16),
@@ -204,53 +288,6 @@ class _PostDetailPageState extends State<PostDetailPage> {
                 ),
               ),
             ),
-
-            // Post Image
-            if (_post.postImage != null)
-              CachedNetworkImage(
-                imageUrl: _post.postImage!,
-                width: double.infinity,
-                height: size.width,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
-                  width: double.infinity,
-                  height: size.width,
-                  color: theme.colorScheme.surface,
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        theme.colorScheme.primary,
-                      ),
-                      strokeWidth: 2,
-                    ),
-                  ),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  width: double.infinity,
-                  height: size.width,
-                  color: theme.colorScheme.surface,
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Iconsax.image,
-                          color: theme.colorScheme.primary,
-                          size: 40,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Failed to load image',
-                          style: GoogleFonts.poppins(
-                            color: theme.colorScheme.primary,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
 
             // Actions
             Padding(

@@ -10,6 +10,7 @@ import 'package:frontend/services/api_service.dart';
 import 'package:frontend/utils/Components/post_card.dart';
 import 'package:frontend/View/Interface/Settings/settings_page.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:video_player/video_player.dart';
 
 class ProfilePage extends StatefulWidget {
   final String? userId;
@@ -290,8 +291,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               userName: post.userName,
                               userImageUrl: post.userProfileImage ??
                                   'https://via.placeholder.com/150',
-                              postImageUrl: post.postImage ??
-                                  'https://via.placeholder.com/150',
+                              media: post.media,
                               description: post.caption,
                               isLiked:
                                   post.likedBy.contains(_getCurrentUserId()),
@@ -330,20 +330,45 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         );
                       },
-                      child: CachedNetworkImage(
-                        imageUrl:
-                            post.postImage ?? 'https://via.placeholder.com/150',
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          color: theme.colorScheme.surface,
-                          child: const Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                        ),
-                        errorWidget: (context, url, error) => Container(
-                          color: theme.colorScheme.surface,
-                          child: const Icon(Iconsax.image),
-                        ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: post.media.isNotEmpty
+                            ? (post.media.first.type == 'video'
+                                ? _ProfileVideoPreviewGrid(
+                                    url: post.media.first.url)
+                                : CachedNetworkImage(
+                                    imageUrl: post.media.first.url,
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    placeholder: (context, url) => Container(
+                                      color: theme.colorScheme.surface,
+                                      child: Center(
+                                        child: CircularProgressIndicator(
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                            theme.colorScheme.primary,
+                                          ),
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                    ),
+                                    errorWidget: (context, url, error) =>
+                                        Container(
+                                      color: theme.colorScheme.surface,
+                                      child: Icon(
+                                        Iconsax.image,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                    ),
+                                  ))
+                            : Container(
+                                color: theme.colorScheme.surface,
+                                child: Icon(
+                                  Iconsax.image,
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
                       ),
                     );
                   },
@@ -381,6 +406,52 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ProfileVideoPreviewGrid extends StatefulWidget {
+  final String url;
+  const _ProfileVideoPreviewGrid({required this.url});
+  @override
+  State<_ProfileVideoPreviewGrid> createState() =>
+      _ProfileVideoPreviewGridState();
+}
+
+class _ProfileVideoPreviewGridState extends State<_ProfileVideoPreviewGrid> {
+  late VideoPlayerController _controller;
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.network(widget.url)
+      ..setLooping(true)
+      ..setVolume(0)
+      ..initialize().then((_) {
+        _controller.play();
+        if (mounted) setState(() => _isInitialized = true);
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      return Container(
+        color: Theme.of(context).colorScheme.surface,
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+    return AspectRatio(
+      aspectRatio:
+          _controller.value.aspectRatio > 0 ? _controller.value.aspectRatio : 1,
+      child: VideoPlayer(_controller),
     );
   }
 }

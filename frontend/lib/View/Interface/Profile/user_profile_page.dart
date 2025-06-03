@@ -9,6 +9,7 @@ import 'package:frontend/services/api_service.dart';
 import 'package:frontend/models/user_model.dart';
 import 'package:frontend/models/post_model.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:video_player/video_player.dart';
 
 class UserProfilePage extends StatefulWidget {
   final String userId;
@@ -311,28 +312,43 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     },
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: CachedNetworkImage(
-                        imageUrl: post.postImage!,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          color: theme.colorScheme.surface,
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                theme.colorScheme.primary,
+                      child: post.media.isNotEmpty
+                          ? (post.media.first.type == 'video'
+                              ? _UserProfileVideoPreviewGrid(
+                                  url: post.media.first.url)
+                              : CachedNetworkImage(
+                                  imageUrl: post.media.first.url,
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                  placeholder: (context, url) => Container(
+                                    color: theme.colorScheme.surface,
+                                    child: Center(
+                                      child: CircularProgressIndicator(
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                          theme.colorScheme.primary,
+                                        ),
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                  ),
+                                  errorWidget: (context, url, error) =>
+                                      Container(
+                                    color: theme.colorScheme.surface,
+                                    child: Icon(
+                                      Iconsax.image,
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                  ),
+                                ))
+                          : Container(
+                              color: theme.colorScheme.surface,
+                              child: Icon(
+                                Iconsax.image,
+                                color: theme.colorScheme.primary,
                               ),
-                              strokeWidth: 2,
                             ),
-                          ),
-                        ),
-                        errorWidget: (context, url, error) => Container(
-                          color: theme.colorScheme.surface,
-                          child: Icon(
-                            Iconsax.image,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                      ),
                     ),
                   );
                 },
@@ -386,6 +402,97 @@ class _UserProfilePageState extends State<UserProfilePage> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _UserProfileVideoPreview extends StatefulWidget {
+  final String url;
+  const _UserProfileVideoPreview({required this.url});
+  @override
+  State<_UserProfileVideoPreview> createState() =>
+      _UserProfileVideoPreviewState();
+}
+
+class _UserProfileVideoPreviewState extends State<_UserProfileVideoPreview> {
+  late VideoPlayerController _controller;
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.network(widget.url)
+      ..initialize().then((_) {
+        if (mounted) setState(() => _isInitialized = true);
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      return Container(
+        color: Theme.of(context).colorScheme.surface,
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+    return AspectRatio(
+      aspectRatio: _controller.value.aspectRatio > 0
+          ? _controller.value.aspectRatio
+          : 9 / 16,
+      child: VideoPlayer(_controller),
+    );
+  }
+}
+
+class _UserProfileVideoPreviewGrid extends StatefulWidget {
+  final String url;
+  const _UserProfileVideoPreviewGrid({required this.url});
+  @override
+  State<_UserProfileVideoPreviewGrid> createState() =>
+      _UserProfileVideoPreviewGridState();
+}
+
+class _UserProfileVideoPreviewGridState
+    extends State<_UserProfileVideoPreviewGrid> {
+  late VideoPlayerController _controller;
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.network(widget.url)
+      ..setLooping(true)
+      ..setVolume(0)
+      ..initialize().then((_) {
+        _controller.play();
+        if (mounted) setState(() => _isInitialized = true);
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      return Container(
+        color: Theme.of(context).colorScheme.surface,
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+    return AspectRatio(
+      aspectRatio:
+          _controller.value.aspectRatio > 0 ? _controller.value.aspectRatio : 1,
+      child: VideoPlayer(_controller),
     );
   }
 }

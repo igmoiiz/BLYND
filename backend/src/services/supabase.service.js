@@ -52,11 +52,14 @@ const uploadUserImage = async (file, userName) => {
   }
 };
 
-const uploadPostImage = async (file, userId) => {
+const uploadPostMedia = async (file, userId) => {
   try {
     const timestamp = Date.now();
     const fileExt = file.originalname.split('.').pop();
     const fileName = `post-${userId}-${timestamp}.${fileExt}`;
+
+    // Ensure bucket allows video and image mime types
+    await ensureBucketExists(BUCKET_NAMES.POST_IMAGES);
 
     const { data, error } = await supabase.storage
       .from(BUCKET_NAMES.POST_IMAGES)
@@ -73,7 +76,7 @@ const uploadPostImage = async (file, userId) => {
 
     return publicUrl.publicUrl;
   } catch (error) {
-    console.error('Error uploading post image:', error);
+    console.error('Error uploading post media:', error);
     return '';
   }
 };
@@ -96,6 +99,6 @@ module.exports = {
   BUCKET_NAMES,
   ensureBucketExists,
   uploadUserImage,
-  uploadPostImage,
+  uploadPostMedia,
   deleteImage
 }; 

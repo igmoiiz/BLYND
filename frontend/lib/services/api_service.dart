@@ -140,7 +140,9 @@ class ApiService {
       // Create the request body with the complete image URL
       final requestBody = jsonEncode({
         'caption': caption,
-        'postImage': imageUrl,
+        'media': [
+          {'url': imageUrl, 'type': 'image'}
+        ],
       });
 
       log('Sending request with body: $requestBody');
@@ -165,11 +167,11 @@ class ApiService {
       final data = jsonDecode(response.body);
       final post = PostModel.fromJson(data['post']);
 
-      log('Created post with image URL: ${post.postImage}');
+      log('Created post with media URLs: ${post.media.map((m) => m.url).join(", ")}');
 
-      // Verify if the post was created with the correct image URL
-      if (post.postImage?.isEmpty ?? true) {
-        log('Warning: Post was created but image URL is empty in the response');
+      // Verify if the post was created with the correct media URLs
+      if (post.media.isEmpty) {
+        log('Warning: Post was created but media URLs are empty in the response');
       }
 
       return post;
@@ -468,4 +470,6 @@ class ApiService {
       throw Exception('Error searching users: $e');
     }
   }
+
+  static String? get token => _token;
 }

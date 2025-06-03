@@ -34,6 +34,25 @@ class CommentModel {
   }
 }
 
+class MediaItem {
+  final String url;
+  final String type; // 'image' or 'video'
+
+  MediaItem({required this.url, required this.type});
+
+  factory MediaItem.fromJson(Map<String, dynamic> json) {
+    return MediaItem(
+      url: json['url'],
+      type: json['type'],
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'url': url,
+        'type': type,
+      };
+}
+
 class PostModel {
   final String postId;
   final String userEmail;
@@ -41,7 +60,7 @@ class PostModel {
   final String userName;
   final String? userProfileImage;
   final String caption;
-  final String? postImage;
+  final List<MediaItem> media;
   final int likeCount;
   final List<String> likedBy;
   final List<CommentModel> comments;
@@ -54,14 +73,14 @@ class PostModel {
     required this.userName,
     this.userProfileImage,
     required this.caption,
-    this.postImage,
+    this.media = const [],
     this.likeCount = 0,
     this.likedBy = const [],
     this.comments = const [],
     required this.createdAt,
   });
 
-  bool get hasImage => postImage != null && postImage!.isNotEmpty;
+  bool get hasMedia => media.isNotEmpty;
   bool get hasUserImage =>
       userProfileImage != null && userProfileImage!.isNotEmpty;
   bool isLikedByUser(String userId) => likedBy.contains(userId);
@@ -74,7 +93,7 @@ class PostModel {
       'userName': userName,
       'userProfileImage': userProfileImage,
       'caption': caption,
-      'postImage': postImage,
+      'media': media.map((m) => m.toJson()).toList(),
       'likeCount': likeCount,
       'likedBy': likedBy,
       'comments': comments.map((comment) => comment.toJson()).toList(),
@@ -90,7 +109,10 @@ class PostModel {
       userName: json['userName'] ?? '',
       userProfileImage: json['userProfileImage'],
       caption: json['caption'] ?? '',
-      postImage: json['postImage'],
+      media: (json['media'] as List?)
+              ?.map((m) => MediaItem.fromJson(m))
+              .toList() ??
+          [],
       likeCount: json['likeCount'] ?? 0,
       likedBy: List<String>.from(json['likedBy'] ?? []),
       comments: (json['comments'] as List?)
@@ -110,7 +132,7 @@ class PostModel {
     String? userName,
     String? userProfileImage,
     String? caption,
-    String? postImage,
+    List<MediaItem>? media,
     int? likeCount,
     List<String>? likedBy,
     List<CommentModel>? comments,
@@ -123,7 +145,7 @@ class PostModel {
       userName: userName ?? this.userName,
       userProfileImage: userProfileImage ?? this.userProfileImage,
       caption: caption ?? this.caption,
-      postImage: postImage ?? this.postImage,
+      media: media ?? this.media,
       likeCount: likeCount ?? this.likeCount,
       likedBy: likedBy ?? this.likedBy,
       comments: comments ?? this.comments,

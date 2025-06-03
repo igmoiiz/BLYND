@@ -29,9 +29,10 @@ class PostProvider extends ChangeNotifier {
 
       final newPosts = await ApiService.getPosts(page: _currentPage);
 
-      // Log post image URLs for debugging
+      // Log post media URLs for debugging
       for (var post in newPosts) {
-        debugPrint('Post ${post.postId} image URL: ${post.postImage}');
+        debugPrint(
+            'Post ${post.postId} media URLs: ${post.media.map((m) => m.url).join(", ")}');
       }
 
       if (refresh) {
@@ -64,8 +65,9 @@ class PostProvider extends ChangeNotifier {
         imageBytes: Uint8List.fromList(imageBytes),
       );
 
-      // Log new post image URL for debugging
-      debugPrint('New post ${newPost.postId} image URL: ${newPost.postImage}');
+      // Log new post media URLs for debugging
+      debugPrint(
+          'New post ${newPost.postId} media URLs: ${newPost.media.map((m) => m.url).join(", ")}');
 
       _posts.insert(0, newPost);
     } catch (e) {

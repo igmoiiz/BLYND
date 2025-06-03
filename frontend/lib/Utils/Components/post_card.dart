@@ -8,11 +8,13 @@ import 'package:frontend/View/Interface/Feed/post_detail_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:video_player/video_player.dart';
+import 'package:chewie/chewie.dart';
 
 class PostCard extends StatefulWidget {
   final String userName;
   final String userImageUrl;
-  final String postImageUrl;
+  final List<MediaItem> media;
   final String description;
   final bool isLiked;
   final bool isSaved;
@@ -31,7 +33,7 @@ class PostCard extends StatefulWidget {
     super.key,
     required this.userName,
     required this.userImageUrl,
-    required this.postImageUrl,
+    required this.media,
     required this.description,
     this.isLiked = false,
     this.isSaved = false,
@@ -97,7 +99,7 @@ class _PostCardState extends State<PostCard>
                 userName: widget.userName,
                 userProfileImage: widget.userImageUrl,
                 caption: widget.description,
-                postImage: widget.postImageUrl,
+                media: widget.media,
                 likeCount: widget.likeCount,
                 likedBy: widget.likedBy,
                 comments: widget.comments,
@@ -171,63 +173,27 @@ class _PostCardState extends State<PostCard>
                 ),
                 const SizedBox(height: 10),
 
-                /// Post Image
+                /// Post Media (image or video)
                 ClipRRect(
                   borderRadius: BorderRadius.circular(14),
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      CachedNetworkImage(
-                        imageUrl: widget.postImageUrl.isEmpty
-                            ? 'https://via.placeholder.com/400'
-                            : widget.postImageUrl,
-                        width: double.infinity,
-                        height: size.width,
-                        fit: BoxFit.cover,
-                        useOldImageOnUrlChange: true,
-                        fadeInDuration: const Duration(milliseconds: 300),
-                        placeholder: (context, url) => Container(
+                      if (widget.media.isNotEmpty)
+                        _MediaPreview(media: widget.media.first)
+                      else
+                        Container(
                           width: double.infinity,
-                          height: size.width,
-                          color: theme.colorScheme.surface,
+                          height: MediaQuery.of(context).size.width,
+                          color: Theme.of(context).colorScheme.surface,
                           child: Center(
-                            child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                theme.colorScheme.primary,
-                              ),
-                              strokeWidth: 2,
+                            child: Icon(
+                              Iconsax.image,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 40,
                             ),
                           ),
                         ),
-                        errorWidget: (context, url, error) {
-                          debugPrint('Image error: $error for URL: $url');
-                          return Container(
-                            width: double.infinity,
-                            height: size.width,
-                            color: theme.colorScheme.surface,
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Iconsax.image,
-                                    color: theme.colorScheme.primary,
-                                    size: 40,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Image not available',
-                                    style: GoogleFonts.poppins(
-                                      color: theme.colorScheme.primary,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
                       if (_showOverlayHeart)
                         ScaleTransition(
                           scale: Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -249,7 +215,7 @@ class _PostCardState extends State<PostCard>
                             child: Icon(
                               FontAwesomeIcons.solidHeart,
                               color: Colors.red,
-                              size: size.width * 0.3,
+                              size: MediaQuery.of(context).size.width * 0.3,
                             ),
                           ),
                         ),
@@ -425,6 +391,105 @@ class _PostCardState extends State<PostCard>
       return '${difference.inDays}d ago';
     } else {
       return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+    }
+  }
+}
+
+class _MediaPreview extends StatefulWidget {
+  final MediaItem media;
+  const _MediaPreview({required this.media});
+  @override
+  State<_MediaPreview> createState() => _MediaPreviewState();
+}
+
+class _MediaPreviewState extends State<_MediaPreview> {
+  VideoPlayerController? _videoController;
+  ChewieController? _chewieController;
+  bool _isVideo = false;
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _isVideo = widget.media.type == 'video';
+    if (_isVideo) {
+      _initVideo();
+    }
+  }
+
+  Future<void> _initVideo() async {
+    _videoController = VideoPlayerController.network(widget.media.url);
+    await _videoController!.initialize();
+    _chewieController = ChewieController(
+      videoPlayerController: _videoController!,
+      autoPlay: false,
+      looping: false,
+      aspectRatio: _videoController!.value.aspectRatio > 0
+          ? _videoController!.value.aspectRatio
+          : 9 / 16,
+    );
+    if (mounted) {
+      setState(() {
+        _isInitialized = true;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _videoController?.dispose();
+    _chewieController?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isVideo) {
+      return CachedNetworkImage(
+        imageUrl: widget.media.url,
+        width: double.infinity,
+        height: MediaQuery.of(context).size.width,
+        fit: BoxFit.cover,
+        placeholder: (context, url) => Container(
+          width: double.infinity,
+          height: MediaQuery.of(context).size.width,
+          color: Theme.of(context).colorScheme.surface,
+          child: Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(
+                Theme.of(context).colorScheme.primary,
+              ),
+              strokeWidth: 2,
+            ),
+          ),
+        ),
+        errorWidget: (context, url, error) => Container(
+          width: double.infinity,
+          height: MediaQuery.of(context).size.width,
+          color: Theme.of(context).colorScheme.surface,
+          child: Center(
+            child: Icon(
+              Iconsax.image,
+              color: Theme.of(context).colorScheme.primary,
+              size: 40,
+            ),
+          ),
+        ),
+      );
+    } else {
+      if (!_isInitialized) {
+        return Container(
+          width: double.infinity,
+          height: MediaQuery.of(context).size.width,
+          color: Theme.of(context).colorScheme.surface,
+          child: const Center(child: CircularProgressIndicator()),
+        );
+      }
+      return SizedBox(
+        width: double.infinity,
+        height: MediaQuery.of(context).size.width,
+        child: Chewie(controller: _chewieController!),
+      );
     }
   }
 }

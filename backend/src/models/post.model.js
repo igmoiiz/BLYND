@@ -21,6 +21,11 @@ const commentSchema = new mongoose.Schema({
   }
 });
 
+const mediaSchema = new mongoose.Schema({
+  url: { type: String, required: true },
+  type: { type: String, enum: ['image', 'video'], required: true },
+});
+
 const postSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -37,7 +42,7 @@ const postSchema = new mongoose.Schema({
   },
   userProfileImage: String,
   caption: String,
-  postImage: String,
+  media: [mediaSchema],
   likeCount: {
     type: Number,
     default: 0
@@ -60,7 +65,7 @@ postSchema.methods.toClientFormat = function() {
     userName: this.userName,
     userProfileImage: this.userProfileImage,
     caption: this.caption,
-    postImage: this.postImage,
+    media: this.media,
     likeCount: this.likeCount,
     likedBy: this.likedBy.map(id => id.toString()),
     comments: this.comments.map(comment => ({

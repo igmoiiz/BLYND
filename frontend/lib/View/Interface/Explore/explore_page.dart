@@ -7,6 +7,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:frontend/View/Interface/Profile/user_profile_page.dart';
 import 'package:frontend/View/Interface/Feed/post_detail_page.dart';
+import 'package:chewie/chewie.dart';
+import 'package:video_player/video_player.dart';
 
 enum ExploreTab { posts, users }
 
@@ -63,6 +65,42 @@ class _ExplorePageState extends State<ExplorePage> {
       setState(() => _isSearching = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error searching users: $e')),
+      );
+    }
+  }
+
+  Widget _buildPostGridItem(
+      PostModel post, BuildContext context, ThemeData theme) {
+    if (post.media.isEmpty) {
+      return Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Icon(Iconsax.image),
+      );
+    }
+    final firstMedia = post.media.first;
+    if (firstMedia.type == 'video') {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: _ExploreVideoPreview(url: firstMedia.url),
+      );
+    } else {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: CachedNetworkImage(
+          imageUrl: firstMedia.url,
+          fit: BoxFit.cover,
+          placeholder: (context, url) => Container(
+            color: theme.colorScheme.surface,
+            child: const Center(child: CircularProgressIndicator()),
+          ),
+          errorWidget: (context, url, error) => Container(
+            color: theme.colorScheme.surface,
+            child: const Icon(Iconsax.image),
+          ),
+        ),
       );
     }
   }
@@ -180,30 +218,58 @@ class _ExplorePageState extends State<ExplorePage> {
                                   ),
                                 );
                               },
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: CachedNetworkImage(
-                                  imageUrl: post.postImage ??
-                                      'https://via.placeholder.com/150',
-                                  fit: BoxFit.cover,
-                                  placeholder: (context, url) => Container(
-                                    color: theme.colorScheme.surface,
-                                    child: const Center(
-                                        child: CircularProgressIndicator()),
-                                  ),
-                                  errorWidget: (context, url, error) =>
-                                      Container(
-                                    color: theme.colorScheme.surface,
-                                    child: const Icon(Iconsax.image),
-                                  ),
-                                ),
-                              ),
+                              child: _buildPostGridItem(post, context, theme),
                             );
                           },
                         ),
             ),
         ],
       ),
+    );
+  }
+}
+
+class _ExploreVideoPreview extends StatefulWidget {
+  final String url;
+  const _ExploreVideoPreview({required this.url});
+  @override
+  State<_ExploreVideoPreview> createState() => _ExploreVideoPreviewState();
+}
+
+class _ExploreVideoPreviewState extends State<_ExploreVideoPreview> {
+  late VideoPlayerController _controller;
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.network(widget.url)
+      ..setLooping(true)
+      ..setVolume(0)
+      ..initialize().then((_) {
+        _controller.play();
+        if (mounted) setState(() => _isInitialized = true);
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      return Container(
+        color: Theme.of(context).colorScheme.surface,
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+    return AspectRatio(
+      aspectRatio:
+          _controller.value.aspectRatio > 0 ? _controller.value.aspectRatio : 1,
+      child: VideoPlayer(_controller),
     );
   }
 }

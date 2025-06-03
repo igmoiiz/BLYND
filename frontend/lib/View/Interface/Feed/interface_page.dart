@@ -144,9 +144,7 @@ class _InterfacePageState extends State<InterfacePage> {
                       userImageUrl: post.userProfileImage?.isEmpty ?? true
                           ? 'https://via.placeholder.com/150'
                           : post.userProfileImage!,
-                      postImageUrl: post.postImage?.isEmpty ?? true
-                          ? 'https://via.placeholder.com/400'
-                          : post.postImage!,
+                      media: post.media,
                       description: post.caption,
                       isLiked: post.likedBy.contains(currentUser?.id),
                       onLike: () => _handleLike(post.postId),

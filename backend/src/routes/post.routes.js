@@ -3,7 +3,7 @@ const { body } = require('express-validator');
 const multer = require('multer');
 const Post = require('../models/post.model');
 const { protect } = require('../middleware/auth.middleware');
-const { uploadPostImage, BUCKET_NAMES } = require('../services/supabase.service');
+const { uploadPostMedia, BUCKET_NAMES } = require('../services/supabase.service');
 
 const router = express.Router();
 const upload = multer();
@@ -11,14 +11,19 @@ const upload = multer();
 // Create post
 router.post('/',
   protect,
-  [
-    body('caption').trim().notEmpty().withMessage('Caption is required'),
-    body('postImage').optional().isString(),
-  ],
+  upload.array('media', 10), // Accept up to 10 files
   async (req, res) => {
     try {
-      const { caption, postImage } = req.body;
-      let postImageUrl = postImage || '';
+      const { caption } = req.body;
+      const files = req.files || [];
+      const media = [];
+
+      for (const file of files) {
+        const url = await uploadPostMedia(file, req.user._id);
+        let type = 'image';
+        if (file.mimetype.startsWith('video/')) type = 'video';
+        media.push({ url, type });
+      }
 
       const post = await Post.create({
         userId: req.user._id,
@@ -26,7 +31,7 @@ router.post('/',
         userName: req.user.userName,
         userProfileImage: req.user.profileImage,
         caption,
-        postImage: postImageUrl
+        media
       });
 
       res.status(201).json({
