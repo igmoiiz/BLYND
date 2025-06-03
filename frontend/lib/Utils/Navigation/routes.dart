@@ -4,7 +4,6 @@ import 'package:frontend/View/Authentication/login.dart';
 import 'package:frontend/View/Authentication/sign_up.dart';
 import 'package:frontend/View/Interface/Feed/interface_page.dart';
 import 'package:frontend/View/Interface/home_page.dart';
-import 'package:frontend/View/Interface/Settings/about_page.dart';
 import 'package:frontend/View/Interface/Settings/edit_profile_page.dart';
 import 'package:frontend/View/Interface/Settings/help_page.dart';
 import 'package:frontend/View/Interface/Settings/privacy_policy_page.dart';
