@@ -426,7 +426,7 @@ class ApiService {
   static Future<void> followUser(String userId) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/users/$userId/follow'),
+        Uri.parse('$baseUrl/users/follow/$userId'),
         headers: _headers,
       );
       if (response.statusCode != 200) {
@@ -439,8 +439,8 @@ class ApiService {
 
   static Future<void> unfollowUser(String userId) async {
     try {
-      final response = await http.delete(
-        Uri.parse('$baseUrl/users/$userId/follow'),
+      final response = await http.post(
+        Uri.parse('$baseUrl/users/unfollow/$userId'),
         headers: _headers,
       );
       if (response.statusCode != 200) {
