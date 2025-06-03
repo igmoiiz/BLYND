@@ -70,7 +70,11 @@ class _MediaCarouselState extends State<MediaCarousel> {
 
   @override
   void dispose() {
-    _disposeControllers();
+    for (final controller in _videoControllers) {
+      controller?.dispose();
+    }
+    _videoControllers.clear();
+    _videoInitialized.clear();
     super.dispose();
   }
 

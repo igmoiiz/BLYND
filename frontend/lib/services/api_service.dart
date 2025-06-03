@@ -6,6 +6,8 @@ import 'package:frontend/models/post_model.dart';
 import 'package:frontend/models/user_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
+import 'package:http_parser/http_parser.dart';
+import 'package:file_picker/file_picker.dart';
 
 class ApiService {
   static const String baseUrl =
@@ -110,75 +112,52 @@ class ApiService {
   // Posts
   static Future<PostModel> createPost({
     required String caption,
-    required Uint8List imageBytes,
+    required PlatformFile mediaFile,
   }) async {
-    try {
-      final supabase = Supabase.instance.client;
-      final fileName = 'post_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final uri = Uri.parse('$baseUrl/posts');
+    final request = http.MultipartRequest('POST', uri);
 
-      log('Uploading image to Supabase...');
-
-      // Upload image to Supabase
-      final uploadResponse =
-          await supabase.storage.from('post-images').uploadBinary(
-                fileName,
-                imageBytes,
-                fileOptions: const FileOptions(
-                  contentType: 'image/jpeg',
-                  upsert: true,
-                ),
-              );
-
-      log('Upload response path: $uploadResponse');
-
-      // Get the public URL for the uploaded image
-      final imageUrl =
-          supabase.storage.from('post-images').getPublicUrl(fileName);
-
-      log('Generated image URL: $imageUrl');
-
-      // Create the request body with the complete image URL
-      final requestBody = jsonEncode({
-        'caption': caption,
-        'media': [
-          {'url': imageUrl, 'type': 'image'}
-        ],
-      });
-
-      log('Sending request with body: $requestBody');
-
-      // Create post with the image URL
-      final response = await http.post(
-        Uri.parse('$baseUrl/posts'),
-        headers: {
-          'Content-Type': 'application/json',
-          if (_token != null) 'Authorization': 'Bearer $_token',
-        },
-        body: requestBody,
-      );
-
-      log('Create post response: ${response.body}');
-
-      if (response.statusCode != 201) {
-        log('Failed to create post with status code: ${response.statusCode}');
-        throw Exception('Failed to create post: ${response.body}');
-      }
-
-      final data = jsonDecode(response.body);
-      final post = PostModel.fromJson(data['post']);
-
-      log('Created post with media URLs: ${post.media.map((m) => m.url).join(", ")}');
-
-      // Verify if the post was created with the correct media URLs
-      if (post.media.isEmpty) {
-        log('Warning: Post was created but media URLs are empty in the response');
-      }
-
-      return post;
-    } catch (e) {
-      log('Create post error: $e');
-      throw Exception('Create post error: $e');
+    if (_token != null) {
+      request.headers['Authorization'] = 'Bearer $_token';
     }
+
+    request.fields['caption'] = caption;
+
+    // Detect content type
+    String? ext = mediaFile.extension?.toLowerCase();
+    MediaType contentType;
+    if (ext == 'jpg' || ext == 'jpeg') {
+      contentType = MediaType('image', 'jpeg');
+    } else if (ext == 'png') {
+      contentType = MediaType('image', 'png');
+    } else if (ext == 'mp4') {
+      contentType = MediaType('video', 'mp4');
+    } else if (ext == 'mov') {
+      contentType = MediaType('video', 'quicktime');
+    } else if (ext == 'webm') {
+      contentType = MediaType('video', 'webm');
+    } else {
+      contentType = MediaType('application', 'octet-stream');
+    }
+
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'media',
+        mediaFile.bytes!,
+        filename: mediaFile.name,
+        contentType: contentType,
+      ),
+    );
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode != 201) {
+      throw Exception('Failed to create post: \\n${response.body}');
+    }
+
+    final data = jsonDecode(response.body);
+    return PostModel.fromJson(data['post']);
   }
 
   static Future<List<PostModel>> getPosts({int page = 1}) async {
@@ -468,6 +447,24 @@ class ApiService {
           .toList();
     } catch (e) {
       throw Exception('Error searching users: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> checkUsernameAvailability(
+      String username) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/auth/check-username/$username'),
+        headers: _headers,
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to check username: ${response.body}');
+      }
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      throw Exception('Error checking username: $e');
     }
   }
 

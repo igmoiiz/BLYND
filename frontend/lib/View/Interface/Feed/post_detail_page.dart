@@ -233,6 +233,27 @@ class _PostDetailPageState extends State<PostDetailPage> {
               ),
             ),
 
+            // Caption
+            if (_post.caption.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: RichText(
+                  text: TextSpan(
+                    style: GoogleFonts.poppins(
+                      color: theme.colorScheme.onBackground,
+                      fontSize: 14,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: "${_post.userName} ",
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      TextSpan(text: _post.caption),
+                    ],
+                  ),
+                ),
+              ),
+
             // Actions
             Padding(
               padding: const EdgeInsets.all(16),
@@ -317,27 +338,6 @@ class _PostDetailPageState extends State<PostDetailPage> {
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: theme.colorScheme.onBackground,
-                  ),
-                ),
-              ),
-
-            // Caption
-            if (_post.caption.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: RichText(
-                  text: TextSpan(
-                    style: GoogleFonts.poppins(
-                      color: theme.colorScheme.onBackground,
-                      fontSize: 14,
-                    ),
-                    children: [
-                      TextSpan(
-                        text: "${_post.userName} ",
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      TextSpan(text: _post.caption),
-                    ],
                   ),
                 ),
               ),

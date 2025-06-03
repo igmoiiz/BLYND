@@ -143,4 +143,26 @@ router.post('/logout', protect, (req, res) => {
   });
 });
 
+// Check username availability
+router.get('/check-username/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    
+    // Check if username exists
+    const existingUser = await User.findOne({ userName: username });
+    
+    res.json({
+      success: true,
+      available: !existingUser,
+      message: existingUser ? 'Username is taken' : 'Username is available'
+    });
+  } catch (error) {
+    console.error('Username check error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error checking username availability'
+    });
+  }
+});
+
 module.exports = router; 

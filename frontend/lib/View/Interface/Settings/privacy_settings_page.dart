@@ -59,17 +59,51 @@ class _PrivacySettingsPageState extends State<PrivacySettingsPage> {
     setState(() => _isLoading = true);
 
     try {
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(
+              Theme.of(context).colorScheme.primary,
+            ),
+          ),
+        ),
+      );
+
+      // Delete account
       await ApiService.deleteAccount();
+
+      // Sign out from Supabase
+      await context.read<UserProvider>().signOut();
+
+      // Close loading dialog
       if (mounted) {
-        final userProvider = context.read<UserProvider>();
-        await userProvider.signOut();
-        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+        Navigator.pop(context);
+      }
+
+      // Navigate to welcome page and clear all routes
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/welcome_page',
+          (route) => false,
+        );
       }
     } catch (e) {
+      // Close loading dialog if it's showing
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error deleting account: $e'),
+            content: Text(
+              'Error deleting account: $e',
+              style: GoogleFonts.poppins(),
+            ),
             backgroundColor: Colors.red,
           ),
         );

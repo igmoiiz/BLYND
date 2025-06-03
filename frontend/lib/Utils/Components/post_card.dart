@@ -394,14 +394,57 @@ class _PostCardState extends State<PostCard>
   }
 }
 
-class _MediaPreview extends StatefulWidget {
+class _MediaPreview extends StatelessWidget {
   final MediaItem media;
+
   const _MediaPreview({required this.media});
+
   @override
-  State<_MediaPreview> createState() => _MediaPreviewState();
+  Widget build(BuildContext context) {
+    if (media.type == 'video') {
+      return _VideoPreview(url: media.url);
+    }
+
+    return CachedNetworkImage(
+      imageUrl: media.url,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      height: MediaQuery.of(context).size.width,
+      placeholder: (context, url) => Container(
+        color: Theme.of(context).colorScheme.surface,
+        child: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(
+              Theme.of(context).colorScheme.primary,
+            ),
+            strokeWidth: 2,
+          ),
+        ),
+      ),
+      errorWidget: (context, url, error) => Container(
+        color: Theme.of(context).colorScheme.surface,
+        child: Center(
+          child: Icon(
+            Iconsax.image,
+            color: Theme.of(context).colorScheme.primary,
+            size: 40,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-class _MediaPreviewState extends State<_MediaPreview> {
+class _VideoPreview extends StatefulWidget {
+  final String url;
+
+  const _VideoPreview({required this.url});
+
+  @override
+  State<_VideoPreview> createState() => _VideoPreviewState();
+}
+
+class _VideoPreviewState extends State<_VideoPreview> {
   VideoPlayerController? _videoController;
   ChewieController? _chewieController;
   bool _isVideo = false;
@@ -410,14 +453,14 @@ class _MediaPreviewState extends State<_MediaPreview> {
   @override
   void initState() {
     super.initState();
-    _isVideo = widget.media.type == 'video';
+    _isVideo = widget.url.endsWith('.mp4');
     if (_isVideo) {
       _initVideo();
     }
   }
 
   Future<void> _initVideo() async {
-    _videoController = VideoPlayerController.network(widget.media.url);
+    _videoController = VideoPlayerController.network(widget.url);
     await _videoController!.initialize();
     _chewieController = ChewieController(
       videoPlayerController: _videoController!,
@@ -445,7 +488,7 @@ class _MediaPreviewState extends State<_MediaPreview> {
   Widget build(BuildContext context) {
     if (!_isVideo) {
       return CachedNetworkImage(
-        imageUrl: widget.media.url,
+        imageUrl: widget.url,
         width: double.infinity,
         height: MediaQuery.of(context).size.width,
         fit: BoxFit.cover,

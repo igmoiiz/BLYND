@@ -280,4 +280,49 @@ router.get('/:userId/following', protect, async (req, res) => {
   }
 });
 
+// Delete user account
+router.delete('/me', protect, async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Delete all user's posts
+    await Post.deleteMany({ userId });
+
+    // Remove user from followers/following lists
+    await User.updateMany(
+      { $or: [{ followers: userId }, { following: userId }] },
+      { $pull: { followers: userId, following: userId } }
+    );
+
+    // Delete user's profile image from storage if exists
+    if (req.user.profileImage) {
+      const fileName = req.user.profileImage.split('/').pop();
+      await supabaseService.deleteImage(supabaseService.BUCKET_NAMES.USER_IMAGES, fileName);
+    }
+
+    // Delete user's posts media from storage
+    const userPosts = await Post.find({ userId });
+    for (const post of userPosts) {
+      for (const media of post.media) {
+        const fileName = media.url.split('/').pop();
+        await supabaseService.deleteImage(supabaseService.BUCKET_NAMES.POST_IMAGES, fileName);
+      }
+    }
+
+    // Finally delete the user
+    await User.findByIdAndDelete(userId);
+
+    res.json({
+      success: true,
+      message: 'Account deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete account error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting account'
+    });
+  }
+});
+
 module.exports = router; 

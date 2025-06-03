@@ -7,11 +7,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
-import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:frontend/services/api_service.dart';
+import 'package:frontend/providers/post_provider.dart';
+import 'package:provider/provider.dart';
 
 class CreatePostPage extends StatefulWidget {
   const CreatePostPage({super.key});
@@ -23,8 +23,8 @@ class CreatePostPage extends StatefulWidget {
 class _CreatePostPageState extends State<CreatePostPage> {
   final _formKey = GlobalKey<FormState>();
   final _captionController = TextEditingController();
-  final bool _isLoading = false;
   List<PlatformFile> _mediaFiles = [];
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -114,93 +114,47 @@ class _CreatePostPageState extends State<CreatePostPage> {
   }
 
   Future<void> _createPost() async {
-    if (!_formKey.currentState!.validate() || _mediaFiles.isEmpty) {
+    if (_captionController.text.trim().isEmpty && _mediaFiles.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-              'Please select at least one image or video and add a caption'),
+            'Please add a caption or media',
+            style: GoogleFonts.poppins(),
+          ),
           backgroundColor: Colors.red,
         ),
       );
       return;
     }
+
+    setState(() => _isLoading = true);
+
     try {
-      // Show loading dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => WillPopScope(
-          onWillPop: () async => false,
-          child: const Center(child: CircularProgressIndicator()),
-        ),
+      final newPost = await ApiService.createPost(
+        caption: _captionController.text.trim(),
+        mediaFile: _mediaFiles.first,
       );
-      // Prepare multipart request
-      const backendUrl =
-          'http://192.168.100.62:3000/api/posts'; // Use your actual backend URL here
-      final request = http.MultipartRequest('POST', Uri.parse(backendUrl));
-      request.fields['caption'] = _captionController.text.trim();
-      final token = ApiService.token;
-      if (token != null) {
-        request.headers['Authorization'] = 'Bearer $token';
+
+      if (mounted) {
+        context.read<PostProvider>().addNewPost(newPost);
+        Navigator.pop(context);
       }
-      for (final file in _mediaFiles) {
-        if (file.bytes == null || file.bytes!.isEmpty) {
-          if (mounted) Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('One or more selected files are invalid.'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          return;
-        }
-        final ext = file.extension?.toLowerCase() ?? '';
-        final isVideo = ['mp4', 'mov', 'webm'].contains(ext);
-        String contentType;
-        if (isVideo) {
-          contentType = 'video/$ext';
-        } else if (ext == 'png') {
-          contentType = 'image/png';
-        } else {
-          contentType = 'image/jpeg';
-        }
-        request.files.add(http.MultipartFile.fromBytes(
-          'media',
-          file.bytes!,
-          filename: file.name,
-          contentType: MediaType.parse(contentType),
-        ));
-      }
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-      if (mounted) Navigator.pop(context);
-      if (response.statusCode == 201) {
-        setState(() {
-          _captionController.clear();
-          _mediaFiles = [];
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Post created successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
+    } catch (e) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error creating post: ${response.body}'),
+            content: Text(
+              'Error creating post: $e',
+              style: GoogleFonts.poppins(),
+            ),
             backgroundColor: Colors.red,
           ),
         );
       }
-    } catch (e) {
-      if (mounted) Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error creating post: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -285,7 +239,7 @@ class _VideoPreviewState extends State<_VideoPreview> {
       // Create a temporary file
       final tempDir = await getTemporaryDirectory();
       final tempFile = File(
-          '${tempDir.path}/temp_video_${DateTime.now().millisecondsSinceEpoch}.mp4');
+          '${tempDir.path}/temp_video_${DateTime.now().millisecondsSinceEpoch}.${widget.file.extension ?? 'mp4'}');
       await tempFile.writeAsBytes(widget.file.bytes!);
 
       // Initialize video player with the temporary file

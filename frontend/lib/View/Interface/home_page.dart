@@ -5,8 +5,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:frontend/View/Interface/Explore/explore_page.dart';
 import 'package:frontend/View/Interface/Feed/interface_page.dart';
-import 'package:frontend/View/Interface/Post/post_page.dart';
 import 'package:frontend/View/Interface/Profile/profile_page.dart';
+import 'package:frontend/view/interface/posting/post.dart';
 import 'package:iconsax/iconsax.dart';
 
 class HomePage extends StatefulWidget {

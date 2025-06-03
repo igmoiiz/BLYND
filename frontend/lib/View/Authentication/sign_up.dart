@@ -1,5 +1,6 @@
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously, unused_local_variable
 
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:frontend/controllers/input_controllers.dart';
@@ -38,6 +39,12 @@ class _RegisterPageState extends State<RegisterPage>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
+  // Username validation state
+  bool _isCheckingUsername = false;
+  bool _isUsernameAvailable = true;
+  String? _usernameError;
+  Timer? _usernameDebounce;
+
   @override
   void initState() {
     super.initState();
@@ -75,6 +82,7 @@ class _RegisterPageState extends State<RegisterPage>
     _inputControllers.confirmPasswordController.dispose();
     _inputControllers.ageController.dispose();
     _inputControllers.phoneController.dispose();
+    _usernameDebounce?.cancel();
     super.dispose();
   }
 
@@ -195,6 +203,51 @@ class _RegisterPageState extends State<RegisterPage>
     return null;
   }
 
+  // Real-time username validation
+  Future<void> _checkUsernameAvailability(String username) async {
+    if (username.length < 3) {
+      setState(() {
+        _isUsernameAvailable = true;
+        _usernameError = null;
+      });
+      return;
+    }
+
+    if (!RegExp(r'^[a-zA-Z0-9._]+$').hasMatch(username)) {
+      setState(() {
+        _isUsernameAvailable = false;
+        _usernameError =
+            'Username can only contain letters, numbers, dots, and underscores';
+      });
+      return;
+    }
+
+    setState(() {
+      _isCheckingUsername = true;
+      _usernameError = null;
+    });
+
+    try {
+      final response = await ApiService.checkUsernameAvailability(username);
+      if (mounted) {
+        setState(() {
+          _isCheckingUsername = false;
+          _isUsernameAvailable = response['available'] as bool;
+          _usernameError = response['message'] as String;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isCheckingUsername = false;
+          _isUsernameAvailable = false;
+          _usernameError = 'Error checking username availability';
+        });
+      }
+    }
+  }
+
+  // Update username validator
   String? _validateUsername(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Please enter a username';
@@ -204,6 +257,9 @@ class _RegisterPageState extends State<RegisterPage>
     }
     if (!RegExp(r'^[a-zA-Z0-9._]+$').hasMatch(value)) {
       return 'Username can only contain letters, numbers, dots, and underscores';
+    }
+    if (!_isUsernameAvailable) {
+      return 'Username is already taken';
     }
     return null;
   }
@@ -540,13 +596,7 @@ class _RegisterPageState extends State<RegisterPage>
             ),
             const SizedBox(height: 16),
 
-            _buildTextField(
-              controller: _inputControllers.usernameController,
-              label: 'Username',
-              hint: 'Choose a unique username',
-              icon: Icons.alternate_email,
-              validator: _validateUsername,
-            ),
+            _buildUsernameField(),
             const SizedBox(height: 16),
 
             _buildTextField(
@@ -567,6 +617,75 @@ class _RegisterPageState extends State<RegisterPage>
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildUsernameField() {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildTextField(
+          controller: _inputControllers.usernameController,
+          label: 'Username',
+          hint: 'Choose a unique username',
+          icon: Icons.alternate_email,
+          validator: _validateUsername,
+          onChanged: (value) {
+            _usernameDebounce?.cancel();
+            _usernameDebounce = Timer(const Duration(milliseconds: 500), () {
+              _checkUsernameAvailability(value);
+            });
+          },
+        ),
+        if (_isCheckingUsername)
+          Padding(
+            padding: const EdgeInsets.only(top: 8, left: 16),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(colorScheme.primary),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Checking availability...',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colorScheme.primary.withOpacity(0.7),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else if (_usernameError != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8, left: 16),
+            child: Row(
+              children: [
+                Icon(
+                  _isUsernameAvailable ? Icons.check_circle : Icons.error,
+                  size: 16,
+                  color: _isUsernameAvailable ? Colors.green : Colors.red,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _usernameError!,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _isUsernameAvailable ? Colors.green : Colors.red,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 
@@ -825,6 +944,7 @@ class _RegisterPageState extends State<RegisterPage>
     bool obscureText = false,
     String? Function(String?)? validator,
     VoidCallback? onTogglePassword,
+    void Function(String)? onChanged,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -881,6 +1001,7 @@ class _RegisterPageState extends State<RegisterPage>
             borderSide: BorderSide(color: Colors.red.shade400, width: 1.5),
           ),
         ),
+        onChanged: onChanged,
       ),
     );
   }
