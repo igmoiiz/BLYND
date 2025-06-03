@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/services/api_service.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/providers/user_provider.dart';
 import 'package:frontend/providers/post_provider.dart';
@@ -18,7 +19,7 @@ Future<void> main() async {
     url: supabase_url,
     anonKey: supabase_anonKey,
   );
-
+  // await ApiService.initDio();
   runApp(const MyApp());
 }
 

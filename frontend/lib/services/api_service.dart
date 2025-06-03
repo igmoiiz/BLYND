@@ -205,17 +205,15 @@ class ApiService {
         Uri.parse('$baseUrl/posts/user/$userId'),
         headers: _headers,
       );
-
       if (response.statusCode != 200) {
-        throw Exception('Failed to fetch user posts: ${response.body}');
+        throw Exception('Failed to get user posts: ${response.body}');
       }
-
       final data = jsonDecode(response.body);
       return (data['posts'] as List)
           .map((post) => PostModel.fromJson(post))
           .toList();
     } catch (e) {
-      throw Exception('Get user posts error: $e');
+      throw Exception('Error getting user posts: $e');
     }
   }
 
@@ -299,15 +297,13 @@ class ApiService {
         Uri.parse('$baseUrl/users/$userId'),
         headers: _headers,
       );
-
       if (response.statusCode != 200) {
-        throw Exception('Failed to fetch user profile: ${response.body}');
+        throw Exception('Failed to get user profile: ${response.body}');
       }
-
       final data = jsonDecode(response.body);
       return UserModel.fromJson(data['user']);
     } catch (e) {
-      throw Exception('Get user profile error: $e');
+      throw Exception('Error getting user profile: $e');
     }
   }
 
@@ -410,6 +406,48 @@ class ApiService {
     } finally {
       // Clear token even if the request fails
       setToken(null);
+    }
+  }
+
+  static Future<void> deleteAccount() async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/users/me'),
+        headers: _headers,
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Failed to delete account');
+      }
+    } catch (e) {
+      throw Exception('Error deleting account: $e');
+    }
+  }
+
+  static Future<void> followUser(String userId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/users/$userId/follow'),
+        headers: _headers,
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Failed to follow user: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error following user: $e');
+    }
+  }
+
+  static Future<void> unfollowUser(String userId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/users/$userId/follow'),
+        headers: _headers,
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Failed to unfollow user: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error unfollowing user: $e');
     }
   }
 }

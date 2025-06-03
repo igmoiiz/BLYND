@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/Model/user_model.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class UserProvider extends ChangeNotifier {
   UserModel? _user;
@@ -92,6 +93,16 @@ class UserProvider extends ChangeNotifier {
       _error = null;
       notifyListeners();
       rethrow;
+    }
+  }
+
+  Future<void> signOut() async {
+    try {
+      await Supabase.instance.client.auth.signOut();
+      _user = null;
+      notifyListeners();
+    } catch (e) {
+      throw Exception('Error signing out: $e');
     }
   }
 

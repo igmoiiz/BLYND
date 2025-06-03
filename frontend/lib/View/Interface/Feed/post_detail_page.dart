@@ -7,6 +7,7 @@ import 'package:frontend/Model/post_model.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:frontend/Utils/Components/comment_sheet.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:frontend/View/Interface/Profile/user_profile_page.dart';
 
 class PostDetailPage extends StatefulWidget {
   final PostModel post;
@@ -136,60 +137,72 @@ class _PostDetailPageState extends State<PostDetailPage> {
             // User Info
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  ClipOval(
-                    child: CachedNetworkImage(
-                      imageUrl: _post.userProfileImage ??
-                          'https://via.placeholder.com/150',
-                      width: 40,
-                      height: 40,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        color: theme.colorScheme.surface,
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              theme.colorScheme.primary,
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.pushNamed(
+                    context,
+                    '/user_profile',
+                    arguments: {
+                      'userId': _post.userId,
+                      'userName': _post.userName,
+                    },
+                  );
+                },
+                child: Row(
+                  children: [
+                    ClipOval(
+                      child: CachedNetworkImage(
+                        imageUrl: _post.userProfileImage ??
+                            'https://via.placeholder.com/150',
+                        width: 40,
+                        height: 40,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          color: theme.colorScheme.surface,
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                theme.colorScheme.primary,
+                              ),
+                              strokeWidth: 2,
                             ),
-                            strokeWidth: 2,
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          color: theme.colorScheme.surface,
+                          child: Icon(
+                            Iconsax.user,
+                            color: theme.colorScheme.primary,
                           ),
                         ),
                       ),
-                      errorWidget: (context, url, error) => Container(
-                        color: theme.colorScheme.surface,
-                        child: Icon(
-                          Iconsax.user,
-                          color: theme.colorScheme.primary,
-                        ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _post.userName,
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onBackground,
+                            ),
+                          ),
+                          Text(
+                            _formatTimestamp(_post.createdAt),
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: theme.colorScheme.onBackground
+                                  .withOpacity(0.6),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _post.userName,
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.onBackground,
-                          ),
-                        ),
-                        Text(
-                          _formatTimestamp(_post.createdAt),
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            color:
-                                theme.colorScheme.onBackground.withOpacity(0.6),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
 

@@ -7,6 +7,8 @@ import 'package:frontend/View/Interface/home_page.dart';
 import 'package:frontend/View/Interface/Settings/edit_profile_page.dart';
 import 'package:frontend/View/Interface/Settings/help_page.dart';
 import 'package:frontend/View/Interface/Settings/privacy_policy_page.dart';
+import 'package:frontend/View/Interface/Settings/privacy_settings_page.dart';
+import 'package:frontend/View/Interface/Profile/user_profile_page.dart';
 import 'package:frontend/View/Splash/splash_screen.dart';
 import 'package:frontend/View/welcome_screen.dart';
 
@@ -30,22 +32,24 @@ class Routes {
       case '/edit_profile':
         return CupertinoPageRoute(
             builder: (context) => const EditProfilePage());
-      // case '/notifications':
-      //   return CupertinoPageRoute(
-      //       builder: (context) => const NotificationsPage());
-      // case '/privacy':
-      //   return CupertinoPageRoute(builder: (context) => const PrivacyPage());
-      // case '/language':
-      //   return CupertinoPageRoute(builder: (context) => const LanguagePage());
-      // case '/theme':
-      //   return CupertinoPageRoute(builder: (context) => const ThemePage());
-      // case '/about':
-      //   return CupertinoPageRoute(builder: (context) => const AboutPage());
+      case '/privacy_settings':
+        return CupertinoPageRoute(
+            builder: (context) => const PrivacySettingsPage());
       case '/privacy_policy':
         return CupertinoPageRoute(
             builder: (context) => const PrivacyPolicyPage());
       case '/help':
         return CupertinoPageRoute(builder: (context) => const HelpPage());
+
+      // Profile Pages
+      case '/user_profile':
+        final args = settings.arguments as Map<String, dynamic>;
+        return CupertinoPageRoute(
+          builder: (context) => UserProfilePage(
+            userId: args['userId'] as String,
+            userName: args['userName'] as String,
+          ),
+        );
 
       default:
         return CupertinoPageRoute(
