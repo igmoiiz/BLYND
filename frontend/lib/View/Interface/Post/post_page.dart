@@ -121,6 +121,10 @@ class _CreatePostPageState extends State<CreatePostPage> {
       if (mounted) Navigator.pop(context);
 
       if (mounted) {
+        setState(() {
+          _captionController.clear();
+          _imageBytes = null;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Post created successfully!'),
