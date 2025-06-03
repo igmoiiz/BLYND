@@ -450,4 +450,22 @@ class ApiService {
       throw Exception('Error unfollowing user: $e');
     }
   }
+
+  static Future<List<UserModel>> searchUsers(String query) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/users?search=$query'),
+        headers: _headers,
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Failed to search users: ${response.body}');
+      }
+      final data = jsonDecode(response.body);
+      return (data['users'] as List)
+          .map((user) => UserModel.fromJson(user))
+          .toList();
+    } catch (e) {
+      throw Exception('Error searching users: $e');
+    }
+  }
 }

@@ -8,6 +8,37 @@ const supabaseService = require('../services/supabase.service');
 const router = express.Router();
 const upload = multer();
 
+// Search users by username or name
+router.get('/', protect, async (req, res) => {
+  try {
+    const search = req.query.search;
+    let users = [];
+    if (search && search.trim() !== '') {
+      users = await User.find({
+        $or: [
+          { userName: { $regex: search, $options: 'i' } },
+          { name: { $regex: search, $options: 'i' } }
+        ]
+      })
+        .select('-password')
+        .limit(20);
+    } else {
+      // Optionally, return trending/recent users or empty array
+      users = [];
+    }
+    res.json({
+      success: true,
+      users: users.map(u => u.toPublicProfile ? u.toPublicProfile() : u)
+    });
+  } catch (error) {
+    console.error('User search error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error searching users'
+    });
+  }
+});
+
 // Get user profile
 router.get('/:userId', protect, async (req, res) => {
   try {

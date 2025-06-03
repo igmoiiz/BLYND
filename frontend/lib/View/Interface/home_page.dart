@@ -3,6 +3,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:frontend/View/Interface/Explore/explore_page.dart';
 import 'package:frontend/View/Interface/Feed/interface_page.dart';
 import 'package:frontend/View/Interface/Post/post_page.dart';
 import 'package:frontend/View/Interface/Profile/profile_page.dart';
@@ -21,7 +22,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   final List<Widget> _pages = [
     const InterfacePage(),
-    const Center(child: Text('Search')),
+    const ExplorePage(),
     const CreatePostPage(),
     const Center(child: Text('Notifications')),
     const ProfilePage(),
