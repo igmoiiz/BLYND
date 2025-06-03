@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/providers/user_provider.dart';
 import 'package:frontend/providers/post_provider.dart';
-import 'package:frontend/Utils/Navigation/routes.dart';
-import 'package:frontend/Utils/Theme/theme.dart';
-import 'package:frontend/Utils/consts.dart';
+import 'package:frontend/utils/Navigation/routes.dart';
+import 'package:frontend/utils/Theme/theme.dart';
+import 'package:frontend/utils/consts.dart';
 import 'package:frontend/View/Splash/splash_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -37,7 +37,7 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: lightMode,
         darkTheme: darkMode,
-        themeMode: ThemeMode.dark,
+        // themeMode: ThemeMode.dark,
         title: "BLYND",
         onGenerateRoute: Routes.generateRoute,
         home: const SplashScreen(),

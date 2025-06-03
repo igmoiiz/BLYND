@@ -1,12 +1,13 @@
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously
 
 import 'package:flutter/material.dart';
-import 'package:frontend/Model/user_model.dart';
+import 'package:frontend/Utils/Navigation/app_custom_route.dart';
+import 'package:frontend/models/user_model.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:frontend/Model/post_model.dart';
+import 'package:frontend/models/post_model.dart';
 import 'package:frontend/services/api_service.dart';
-import 'package:frontend/Utils/Components/post_card.dart';
+import 'package:frontend/utils/Components/post_card.dart';
 import 'package:frontend/View/Interface/Settings/settings_page.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -84,9 +85,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void _navigateToSettings() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const SettingsPage(),
-      ),
+      elegantRoute(const SettingsPage()),
     );
 
     // If settings were updated, refresh the profile

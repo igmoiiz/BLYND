@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:frontend/services/api_service.dart';
-import 'package:frontend/Controller/input_controllers.dart';
+import 'package:frontend/controllers/input_controllers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {

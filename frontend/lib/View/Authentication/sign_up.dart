@@ -2,7 +2,7 @@
 
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:frontend/Controller/input_controllers.dart';
+import 'package:frontend/controllers/input_controllers.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:image_picker/image_picker.dart';
 

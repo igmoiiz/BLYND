@@ -6,8 +6,8 @@ import 'package:iconsax/iconsax.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/providers/user_provider.dart';
 import 'package:frontend/services/api_service.dart';
-import 'package:frontend/Model/user_model.dart';
-import 'package:frontend/Model/post_model.dart';
+import 'package:frontend/models/user_model.dart';
+import 'package:frontend/models/post_model.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class UserProfilePage extends StatefulWidget {

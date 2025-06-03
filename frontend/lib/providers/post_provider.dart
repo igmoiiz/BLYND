@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:frontend/Model/post_model.dart';
+import 'package:frontend/models/post_model.dart';
 import 'package:frontend/services/api_service.dart';
 
 class PostProvider extends ChangeNotifier {

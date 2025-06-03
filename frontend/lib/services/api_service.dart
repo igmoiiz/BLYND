@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:developer';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
-import 'package:frontend/Model/post_model.dart';
-import 'package:frontend/Model/user_model.dart';
+import 'package:frontend/models/post_model.dart';
+import 'package:frontend/models/user_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 

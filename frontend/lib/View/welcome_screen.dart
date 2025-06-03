@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:frontend/Utils/Components/custom_button.dart';
-import 'package:frontend/Utils/size.dart';
+import 'package:frontend/utils/Components/custom_button.dart';
+import 'package:frontend/utils/size.dart';
 
 class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key});

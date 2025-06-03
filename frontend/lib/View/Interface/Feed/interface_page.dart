@@ -6,8 +6,8 @@ import 'package:iconsax/iconsax.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/providers/post_provider.dart';
 import 'package:frontend/providers/user_provider.dart';
-import 'package:frontend/Utils/Components/post_card.dart';
-import 'package:frontend/Utils/Components/comment_sheet.dart';
+import 'package:frontend/utils/Components/post_card.dart';
+import 'package:frontend/utils/Components/comment_sheet.dart';
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 
 class InterfacePage extends StatefulWidget {

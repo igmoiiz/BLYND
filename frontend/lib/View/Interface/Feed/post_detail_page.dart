@@ -3,9 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:frontend/Model/post_model.dart';
+import 'package:frontend/models/post_model.dart';
 import 'package:frontend/services/api_service.dart';
-import 'package:frontend/Utils/Components/comment_sheet.dart';
+import 'package:frontend/utils/Components/comment_sheet.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class PostDetailPage extends StatefulWidget {

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/services/api_service.dart';
-import 'package:frontend/Model/post_model.dart';
-import 'package:frontend/Model/user_model.dart';
+import 'package:frontend/models/post_model.dart';
+import 'package:frontend/models/user_model.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:frontend/View/Interface/Profile/user_profile_page.dart';

@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:frontend/Model/user_model.dart';
+import 'package:frontend/models/user_model.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
