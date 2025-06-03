@@ -229,9 +229,9 @@ dependencies:
 ## 📱 Screenshots
 
 <div align="center">
-  <img src="assets/preview/BLYND Profile.jpg" alt="Profile Page" width="200"/>
-  <img src="assets/preview/BLYND Feed.jpg" alt="Feed Page" width="200"/>
-  <img src="assets/preview/BLYND Settings.jpg" alt="Settings Page" width="200"/>
+  <img src="frontend/assets/preview/BLYND Profile.jpg" alt="Profile Page" width="200"/>
+  <img src="frontend/assets/preview/BLYND Feed.jpg" alt="Feed Page" width="200"/>
+  <img src="frontend/assets/preview/BLYND Settings.jpg" alt="Settings Page" width="200"/>
 </div>
 
 ## 👥 Authors
@@ -251,5 +251,5 @@ For support, email moaiz3110@gmail.com.
 ---
 
 <div align="center">
-  Made with ❤️ by [Your Name]
+  Made with ❤️ by Moiz Baloch
 </div>
