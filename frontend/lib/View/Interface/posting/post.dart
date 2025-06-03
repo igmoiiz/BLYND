@@ -137,7 +137,22 @@ class _CreatePostPageState extends State<CreatePostPage> {
 
       if (mounted) {
         context.read<PostProvider>().addNewPost(newPost);
-        Navigator.pop(context);
+
+        setState(() {
+          _captionController.clear();
+          _mediaFiles = [];
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            content: Text(
+              'Post Uploaded Successfully',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
