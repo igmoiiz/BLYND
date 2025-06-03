@@ -9,6 +9,7 @@ class UserModel {
   final List<String> following;
   final int age;
   final String phone;
+  final bool isFollowing;
 
   UserModel({
     required this.id,
@@ -21,6 +22,7 @@ class UserModel {
     this.following = const [],
     required this.age,
     required this.phone,
+    this.isFollowing = false,
   });
 
   Map<String, dynamic> toJson() {
@@ -35,6 +37,7 @@ class UserModel {
       'following': following,
       'age': age,
       'phone': phone,
+      'isFollowing': isFollowing,
     };
   }
 
@@ -71,6 +74,7 @@ class UserModel {
       following: followingList,
       age: json['age'] is String ? int.parse(json['age']) : (json['age'] ?? 0),
       phone: json['phone']?.toString() ?? '',
+      isFollowing: json['isFollowing'] ?? false,
     );
   }
 
@@ -85,6 +89,7 @@ class UserModel {
     List<String>? following,
     int? age,
     String? phone,
+    bool? isFollowing,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -97,6 +102,7 @@ class UserModel {
       following: following ?? this.following,
       age: age ?? this.age,
       phone: phone ?? this.phone,
+      isFollowing: isFollowing ?? this.isFollowing,
     );
   }
 }

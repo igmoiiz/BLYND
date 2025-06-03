@@ -1,4 +1,4 @@
-// ignore_for_file: deprecated_member_use
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,7 +7,6 @@ import 'package:frontend/Model/post_model.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:frontend/Utils/Components/comment_sheet.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:frontend/View/Interface/Profile/user_profile_page.dart';
 
 class PostDetailPage extends StatefulWidget {
   final PostModel post;

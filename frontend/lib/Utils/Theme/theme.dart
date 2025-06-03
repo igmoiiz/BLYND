@@ -8,7 +8,7 @@ ThemeData lightMode = ThemeData(
   colorScheme: ColorScheme.light(
     surface: Colors.grey.shade100,
     primary: Colors.black,
-    secondary: Color(0xFF556B2F),
+    secondary: const Color(0xFF556B2F),
   ),
 );
 
@@ -17,8 +17,8 @@ ThemeData darkMode = ThemeData(
   fontFamily: GoogleFonts.poppins().fontFamily,
   brightness: Brightness.dark,
   colorScheme: ColorScheme.dark(
-    surface: Color(0xFF141414),
+    surface: const Color(0xFF141414),
     primary: Colors.grey.shade100,
-    secondary: Color(0xFF556B2F),
+    secondary: const Color(0xFF556B2F),
   ),
 );

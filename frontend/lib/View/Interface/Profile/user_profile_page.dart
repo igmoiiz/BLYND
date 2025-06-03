@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
@@ -38,13 +40,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
     try {
       final user = await ApiService.getUserProfile(widget.userId);
       final posts = await ApiService.getUserPosts(widget.userId);
-      final currentUser = context.read<UserProvider>().user;
-
       if (mounted) {
         setState(() {
           _user = user;
           _posts = posts;
-          _isFollowing = user.followers.contains(currentUser?.id);
+          _isFollowing = user.isFollowing;
           _isLoading = false;
         });
       }
@@ -62,28 +62,15 @@ class _UserProfilePageState extends State<UserProfilePage> {
 
   Future<void> _toggleFollow() async {
     if (_user == null) return;
-
     setState(() => _isLoading = true);
-
     try {
       if (_isFollowing) {
         await ApiService.unfollowUser(_user!.id);
       } else {
         await ApiService.followUser(_user!.id);
       }
-
-      if (mounted) {
-        setState(() {
-          _isFollowing = !_isFollowing;
-          _user = _user!.copyWith(
-            followers: _isFollowing
-                ? [..._user!.followers, context.read<UserProvider>().user!.id]
-                : _user!.followers
-                    .where((id) => id != context.read<UserProvider>().user!.id)
-                    .toList(),
-          );
-        });
-      }
+      // Reload user profile to get updated isFollowing and follower count
+      await _loadUserData();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -104,7 +91,19 @@ class _UserProfilePageState extends State<UserProfilePage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final currentUser = context.watch<UserProvider>().user;
+    final userProvider = context.watch<UserProvider>();
+    final currentUser = userProvider.user;
+
+    // Ensure current user is loaded
+    if (currentUser == null) {
+      // Trigger load if not already loading
+      if (!userProvider.isLoading) {
+        userProvider.loadCurrentUser();
+      }
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     if (_isLoading) {
       return Scaffold(

@@ -55,7 +55,7 @@ class UserProvider extends ChangeNotifier {
     } catch (e) {
       _error = e.toString();
       notifyListeners();
-      throw e; // Re-throw to handle in UI
+      rethrow; // Re-throw to handle in UI
     } finally {
       _isLoading = false;
       notifyListeners();

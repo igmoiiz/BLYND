@@ -404,7 +404,7 @@ class _RegisterPageState extends State<RegisterPage>
             ),
             child: Center(
               child: isCompleted
-                  ? Icon(Icons.check, color: Colors.white, size: 20)
+                  ? const Icon(Icons.check, color: Colors.white, size: 20)
                   : Text(
                       '${step + 1}',
                       style: TextStyle(
