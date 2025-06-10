@@ -1,3 +1,5 @@
+// ignore_for_file: depend_on_referenced_packages
+
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:typed_data';
@@ -11,7 +13,7 @@ import 'package:file_picker/file_picker.dart';
 
 class ApiService {
   static const String baseUrl =
-      'http://192.168.100.62:3000/api'; // Use 10.0.2.2 for Android emulator
+      'https://blynd-backend-production.up.railway.app/api'; // Use 10.0.2.2 for Android emulator
   static String? _token;
 
   // Set token after login/register

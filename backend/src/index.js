@@ -26,6 +26,19 @@ mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('Connected to MongoDB'))
   .catch((err) => console.error('MongoDB connection error:', err));
 
+// Test route => Get route
+app.get('/', (req, res) => {
+  res.json({ 
+    success: true,
+    message: 'BLYND Backend API is running!',
+    endpoints: [
+      '/api/auth',
+      '/api/users', 
+      '/api/posts'
+    ]
+  });
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);

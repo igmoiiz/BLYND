@@ -34,3 +34,4 @@ pids
 .env
 .env.test
 .env.production 
+.vercel
